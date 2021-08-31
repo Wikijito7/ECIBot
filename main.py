@@ -48,6 +48,10 @@ async def on_command_error(ctx, exception):
 
 @bot.event
 async def on_message(message):
+    # 378213328570417154
+    if message.author.id == 378213328570417154:
+        emoji = "🍆"
+        await message.add_reaction(emoji)
     await bot.process_commands(message)
 
 
@@ -64,9 +68,11 @@ async def help(ctx):
 @bot.command(pass_context=True)
 async def sonidos(ctx):
     sounds = get_sounds()
+    sounds.sort()
     desc = ""
+
     for sound in sounds:
-        desc = desc + sound.replace(".mp3", "") + "\n"
+        desc = desc + sound.replace(".mp3", "") + " \n"
 
     embedMsg = discord.Embed(title="Lista de sonidos", description=desc, color=0x01B05B)
 
@@ -89,10 +95,7 @@ async def play(ctx, audio_name):
             voice_client.play(source=audio)
 
             await ctx.send(f":notes: Reproduciendo `{audio_name}` en `{channel.name}`.")
-            #while voice_client.is_playing():
-            #   time.sleep(.1)
-            #
-            #await voice_client.disconnect()
+
         else: 
             await ctx.send(f"`{audio_name}` no existe.. :frowning:")
             
@@ -116,7 +119,7 @@ async def stop(ctx):
             break
 
 
-@tasks.loop(seconds=5)
+@tasks.loop(seconds=2)
 async def bot_vitals():
     for voice_client in bot.voice_clients:
         if not voice_client.is_playing():

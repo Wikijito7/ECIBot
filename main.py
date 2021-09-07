@@ -11,12 +11,15 @@ from discord.ext import commands
 
 from utils import *
 from voice import *
+from text import TextChannel
 
 
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True, fetch_offline_members=True)
 bot.remove_command("help")
+
+sound_queue = []
 
 
 @bot.event
@@ -59,8 +62,9 @@ async def on_message(message):
 async def help(ctx):
     embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados", color=0x01B05B)
     embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
-    embedMsg.add_field(name="!play <nombre sonido>", value="Reproduce el sonido con el nombre indicado.", inline=False)
-    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo.", inline=False)
+    embedMsg.add_field(name="!play <nombre sonido>", value="Reproduce el sonido con el nombre indicado. También funciona con !p", inline=False)
+    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s", inline=False)
+    embedMsg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -68,18 +72,20 @@ async def help(ctx):
 @bot.command(pass_context=True)
 async def sonidos(ctx):
     sounds = get_sounds()
+    list_size = len(sounds)
+    blank_space = "\u2800"
+    half_list = (list_size // 2) + 1
+    sounds = [sound.replace(".mp3", "") + blank_space * 2 for sound in sounds]
     sounds.sort()
-    desc = ""
 
-    for sound in sounds:
-        desc = desc + sound.replace(".mp3", "") + " \n"
-
-    embedMsg = discord.Embed(title="Lista de sonidos", description=desc, color=0x01B05B)
+    embedMsg = discord.Embed(title="Lista de sonidos", color=0x01B05B)
+    embedMsg.add_field(name=blank_space, value="\n".join(sounds[0:half_list]), inline=True)
+    embedMsg.add_field(name=blank_space, value="\n".join(sounds[half_list:list_size]), inline=True)
 
     await ctx.send(embed=embedMsg)
 
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True, aliases=["p"])
 async def play(ctx, audio_name):
     ch = None
     for channel in ctx.author.guild.voice_channels:
@@ -88,13 +94,21 @@ async def play(ctx, audio_name):
             break
 
     if ch != None:
+        channel_text.set_text_channel(ctx.channel)
         audio = get_audio(audio_name)
-
         if audio != None:
-            voice_client = await channel.connect()
-            voice_client.play(source=audio)
+            if voice_channel.get_voice_channel() == None:
+                client = await ch.connect()
+                voice_channel.set_voice_channel(client)
+                sound_queue.append(audio_name)
 
-            await ctx.send(f":notes: Reproduciendo `{audio_name}` en `{channel.name}`.")
+            else:
+                if audio_name not in sound_queue:
+                    await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
+                    sound_queue.append(audio_name)
+                
+                else:
+                    await ctx.send(f":robot: `{audio_name}` ya está en la cola.. (!queue).")
 
         else: 
             await ctx.send(f"`{audio_name}` no existe.. :frowning:")
@@ -103,6 +117,16 @@ async def play(ctx, audio_name):
         await ctx.send("No estás en ningún canal conectado.. :confused:")
     
 
+@bot.command(pass_context=True, aliases=["q", "cola"])
+async def queue(ctx):
+    embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
+
+    if len(sound_queue) > 0:
+        embedMsg.add_field(name="Sonidos en cola", value=", ".join(sound_queue), inline=False)
+
+    await ctx.send(embed=embedMsg)
+
+
 async def jail(ctx):
     # TODO: Quitar todos los roles a un usuario
     # TODO: Dar rol configurado
@@ -110,7 +134,7 @@ async def jail(ctx):
     pass
 
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True, aliases=["s"])
 async def stop(ctx):
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild and voice_client.is_playing():
@@ -119,11 +143,35 @@ async def stop(ctx):
             break
 
 
-@tasks.loop(seconds=2)
+@tasks.loop(seconds=1)
 async def bot_vitals():
     for voice_client in bot.voice_clients:
         if not voice_client.is_playing():
-            await voice_client.disconnect()
+            if len(sound_queue) == 0:
+                await voice_client.disconnect()
+                voice_channel.set_voice_channel(None)
+
+            else:
+                await play_sound(voice_client, channel_text.get_text_channel(), sound_queue[0])
+                sound_queue.pop(0)
+
+
+
+@tasks.loop(minutes=10)
+async def kiwi():
+    first_random = random.randrange(1, 10000)
+    second_random = random.randrange(1, 10000)
+
+    if (first_random == second_random):
+        pass
+
+    elif (abs(first_random - second_random) <= 100):
+        pass
+
+    pass
+
 
 if __name__ == "__main__":
+    channel_text = TextChannel()
+    voice_channel = VoiceChannel()
     bot.run(get_bot_key(), bot=True)

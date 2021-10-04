@@ -26,7 +26,10 @@ sound_queue = []
 async def on_ready():
     print('{0.user} is alive!'.format(bot))
     await bot.change_presence(activity=discord.Game("~bip-bop"))
-    bot_vitals.start()
+    sdos = bot.get_guild(689108711452442667)
+    if sdos is not None:
+        await sdos.me.edit(nick="Fran López")
+    kiwi.start()
     
 
 @bot.event
@@ -48,6 +51,9 @@ async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
 
+@bot.event
+async def on_error(event, *args, **kwargs):
+    print(args)
 
 @bot.event
 async def on_message(message):
@@ -55,7 +61,18 @@ async def on_message(message):
     if message.author.id == 378213328570417154:
         emoji = "🍆"
         await message.add_reaction(emoji)
+
+    if message.author.id == 651163679814844467:
+        emoji = "😢"
+        await message.add_reaction(emoji)
+
     await bot.process_commands(message)
+    
+    if "francia" in message.content.lower():
+        emojies = ["🇫🇷", "🥖", "🥐", "🍷"]
+        for emoji in emojies:
+            await message.add_reaction(emoji)
+
 
 
 @bot.command(pass_context=True)
@@ -101,6 +118,7 @@ async def play(ctx, audio_name):
                 client = await ch.connect()
                 voice_channel.set_voice_channel(client)
                 sound_queue.append(audio_name)
+                bot_vitals.start()
 
             else:
                 if audio_name not in sound_queue:
@@ -143,32 +161,42 @@ async def stop(ctx):
             break
 
 
-@tasks.loop(seconds=1)
+@tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
     for voice_client in bot.voice_clients:
         if not voice_client.is_playing():
             if len(sound_queue) == 0:
                 await voice_client.disconnect()
                 voice_channel.set_voice_channel(None)
+                bot_vitals.stop()
 
             else:
                 await play_sound(voice_client, channel_text.get_text_channel(), sound_queue[0])
                 sound_queue.pop(0)
 
 
-
-@tasks.loop(minutes=10)
+@tasks.loop(minutes=1)
 async def kiwi():
     first_random = random.randrange(1, 10000)
     second_random = random.randrange(1, 10000)
+    eci_channel = bot.get_channel(689385180921724954)
 
-    if (first_random == second_random):
-        pass
+    if eci_channel is not None and len(eci_channel.members) > 0:
+        play_sound = True
+        for voice_client in bot.voice_clients:
+            if eci_channel.guild == voice_client.guild and voice_client.is_playing() and bot.get_user(826784718589526057) not in eci_channel.members:
+                play_sound = False
+                break
 
-    elif (abs(first_random - second_random) <= 100):
-        pass
-
-    pass
+        if play_sound:
+            print(f"first_random {first_random}, second_random {second_random}, first_random == second_random {first_random == second_random}, abs(first_random - second_random) <= 100 {abs(first_random - second_random) <= 100}")
+            if (first_random == second_random):
+                voice_client = await eci_channel.connect()
+                await play_sound_no_message(voice_client, "a")
+        
+            elif (abs(first_random - second_random) <= 100):
+                voice_client = await eci_channel.connect()
+                await play_sound_no_message(voice_client, "kiwi")
 
 
 if __name__ == "__main__":

@@ -31,7 +31,13 @@ async def disconnect(client):
 async def play_sound(client, text, audio):
     if audio != None:
         client.play(source= get_audio(audio))
-        await text.send(f":notes: Reproduciendo `{audio}` en `{text.name}`.")
+        await text.send(f":notes: Reproduciendo `{audio}` en `{client.channel.name}`.")
+
+
+async def play_sound_no_message(client, audio):
+    if audio != None:
+        client.play(source= get_audio(audio))
+
 
 if __name__ == "__main__":
     pass

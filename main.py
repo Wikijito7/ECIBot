@@ -184,20 +184,23 @@ async def kiwi():
     if eci_channel is not None and len(eci_channel.members) > 0:
         play_sound = True
         for voice_client in bot.voice_clients:
-            if eci_channel.guild == voice_client.guild and voice_client.is_playing() and bot.get_user(826784718589526057) not in eci_channel.members:
+            if eci_channel.guild == voice_client.guild and voice_client.is_playing() and bot.get_user(826784718589526057) in eci_channel.members:
                 play_sound = False
                 break
 
         if play_sound:
-            print(f"first_random {first_random}, second_random {second_random}, first_random == second_random {first_random == second_random}, abs(first_random - second_random) <= 100 {abs(first_random - second_random) <= 100}")
             if (first_random == second_random):
                 voice_client = await eci_channel.connect()
                 await play_sound_no_message(voice_client, "a")
+                bot_vitals.start()
+
         
             elif (abs(first_random - second_random) <= 100):
                 voice_client = await eci_channel.connect()
                 await play_sound_no_message(voice_client, "kiwi")
+                bot_vitals.start()
 
+            
 
 if __name__ == "__main__":
     channel_text = TextChannel()

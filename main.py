@@ -12,6 +12,7 @@ from discord.ext import commands
 from utils import *
 from voice import *
 from text import TextChannel
+from tts import generate_tts, clear_tts
 
 
 intents = discord.Intents.default()
@@ -20,7 +21,8 @@ bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True
 bot.remove_command("help")
 
 sound_queue = []
-
+max_number = 10000
+kiwi_chance = 500
 
 @bot.event
 async def on_ready():
@@ -43,7 +45,7 @@ async def on_guild_join(guild):
 @bot.listen()
 async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CommandNotFound):
-        await ctx.send("Oh.. No encuentro ese comando en mis registros. Prueba a escribir ´!help´")
+        await ctx.send("Oh.. No encuentro ese comando en mis registros. Prueba a escribir `!help`")
 
     if isinstance(exception, commands.MissingRequiredArgument):
         await ctx.send("Argumentos no validos. Revisa cómo la has liado, humano.")
@@ -88,16 +90,13 @@ async def help(ctx):
 
 @bot.command(pass_context=True)
 async def sonidos(ctx):
-    sounds = get_sounds()
-    list_size = len(sounds)
     blank_space = "\u2800"
-    half_list = (list_size // 2) + 1
-    sounds = [sound.replace(".mp3", "") + blank_space * 2 for sound in sounds]
-    sounds.sort()
+    sounds_list = get_sounds_list()
 
-    embedMsg = discord.Embed(title="Lista de sonidos", color=0x01B05B)
-    embedMsg.add_field(name=blank_space, value="\n".join(sounds[0:half_list]), inline=True)
-    embedMsg.add_field(name=blank_space, value="\n".join(sounds[half_list:list_size]), inline=True)
+    embedMsg = discord.Embed(title="Lista de sonidos", description=f"Actualmente hay {len(get_sounds())} sonidos.", color=0x01B05B)
+    embedMsg.add_field(name=blank_space, value="\n".join(sounds_list[0]), inline=True)
+    embedMsg.add_field(name=blank_space, value="\n".join(sounds_list[1]), inline=True)
+    embedMsg.add_field(name=blank_space, value="\n".join(sounds_list[2]), inline=True)
 
     await ctx.send(embed=embedMsg)
 
@@ -135,6 +134,30 @@ async def play(ctx, audio_name):
         await ctx.send("No estás en ningún canal conectado.. :confused:")
     
 
+@bot.command(pass_context=True, aliases=["decir", "t", "say"])
+async def tts(ctx, *args):
+    text = " ".join(args)
+    ch = None
+
+    if not text.strip():
+        await ctx.send("No has escrito nada.. :confused:")
+        return
+
+    for channel in ctx.author.guild.voice_channels:
+        if len(channel.members) > 0 and ctx.author in channel.members:
+            ch = channel
+            break
+
+    if voice_channel.get_voice_channel() == None:
+        await ctx.send(":tools::snail: Generando mensaje tts..")
+        tts_sound = await generate_tts(text)
+        client = await ch.connect()
+        await ctx.send(f":microphone: Reproduciendo tts en `{client.channel.name}`.")
+        voice_channel.set_voice_channel(client)
+        client.play(source=tts_sound)
+        bot_vitals.start()
+
+
 @bot.command(pass_context=True, aliases=["q", "cola"])
 async def queue(ctx):
     embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
@@ -149,6 +172,10 @@ async def jail(ctx):
     # TODO: Quitar todos los roles a un usuario
     # TODO: Dar rol configurado
     # TODO: Mover usuario al canal configurado
+    await ctx.send("Test")
+    role = discord.utils.get(ctx.guild.roles, name="DJ")
+    print(f"buscando el role \"DJ\": {role}")
+    await bot.add_roles(ctx.author, role)
     pass
 
 
@@ -161,6 +188,25 @@ async def stop(ctx):
             break
 
 
+@bot.command(pass_context=True, aliases=["dc"])
+async def disconnect(ctx):
+    for voice_client in bot.voice_clients:
+        if voice_client.guild == ctx.guild:
+            await clear_bot(voice_client)
+            await ctx.send(":robot: Desconectando..")
+            break
+
+
+@bot.command(pass_context=True, aliases=["e", "encuesta"])
+async def poll(ctx, *args):
+    if len(args) > 0:
+        embedMsg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
+        embedMsg.add_field(name="Pregunta", value=" ".join(args), inline=False)
+        message = await ctx.send(embed=embedMsg)
+        await message.add_reaction("👍")
+        await message.add_reaction("👎")
+
+
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
     for voice_client in bot.voice_clients:
@@ -169,6 +215,7 @@ async def bot_vitals():
                 await voice_client.disconnect()
                 voice_channel.set_voice_channel(None)
                 bot_vitals.stop()
+                clear_tts()
 
             else:
                 await play_sound(voice_client, channel_text.get_text_channel(), sound_queue[0])
@@ -177,30 +224,43 @@ async def bot_vitals():
 
 @tasks.loop(minutes=1)
 async def kiwi():
-    first_random = random.randrange(1, 10000)
-    second_random = random.randrange(1, 10000)
+    first_random = random.randrange(1, max_number)
+    second_random = random.randrange(1, max_number)
     eci_channel = bot.get_channel(689385180921724954)
 
-    if eci_channel is not None and len(eci_channel.members) > 0:
+    if eci_channel is not None and len(eci_channel.members) > 1:
         play_sound = True
         for voice_client in bot.voice_clients:
-            if eci_channel.guild == voice_client.guild and voice_client.is_playing() and bot.get_user(826784718589526057) in eci_channel.members:
+            if eci_channel.guild == voice_client.guild:
                 play_sound = False
                 break
-
-        if play_sound:
-            if (first_random == second_random):
-                voice_client = await eci_channel.connect()
-                await play_sound_no_message(voice_client, "a")
-                bot_vitals.start()
-
         
-            elif (abs(first_random - second_random) <= 100):
-                voice_client = await eci_channel.connect()
-                await play_sound_no_message(voice_client, "kiwi")
-                bot_vitals.start()
+        play_sound = play_sound and bot.get_user(826784718589526057) not in eci_channel.members and bot.get_user(899918332965298176) not in eci_channel.members
+        
+        if play_sound:
+            try:
+                if (first_random == second_random):
+                    voice_client = await eci_channel.connect()
+                    await play_sound_no_message(voice_client, "a")
+                    bot_vitals.start()
 
             
+                elif (abs(first_random - second_random) <= kiwi_chance):
+                    voice_client = await eci_channel.connect()
+                    await play_sound_no_message(voice_client, "kiwi")
+                    bot_vitals.start()
+
+            except discord.errors.ClientException as exc:
+                print(">> Exception captured.. Something happened at kiwi()")
+
+
+async def clear_bot(voice_client):
+    voice_client.stop()
+    await voice_client.disconnect()
+    voice_channel.set_voice_channel(None)
+    bot_vitals.stop()
+    sound_queue.clear()
+
 
 if __name__ == "__main__":
     channel_text = TextChannel()

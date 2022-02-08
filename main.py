@@ -13,6 +13,7 @@ from utils import *
 from voice import *
 from text import TextChannel
 from tts import generate_tts, clear_tts
+from gpt3 import *
 
 
 intents = discord.Intents.default()
@@ -79,11 +80,13 @@ async def on_message(message):
 
 @bot.command(pass_context=True)
 async def help(ctx):
-    embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados", color=0x01B05B)
+    embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
     embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
-    embedMsg.add_field(name="!play <nombre sonido>", value="Reproduce el sonido con el nombre indicado. También funciona con !p", inline=False)
-    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s", inline=False)
-    embedMsg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola", inline=False)
+    embedMsg.add_field(name="!play <nombre sonido>", value="Reproduce el sonido con el nombre indicado. También funciona con !p.", inline=False)
+    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s.", inline=False)
+    embedMsg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola.", inline=False)
+    embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
+    embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -150,7 +153,7 @@ async def tts(ctx, *args):
 
     if voice_channel.get_voice_channel() == None:
         await ctx.send(":tools::snail: Generando mensaje tts..")
-        tts_sound = await generate_tts(text)
+        tts_sound = await generate_tts(text, get_speed(text))
         client = await ch.connect()
         await ctx.send(f":microphone: Reproduciendo tts en `{client.channel.name}`.")
         voice_channel.set_voice_channel(client)
@@ -205,6 +208,14 @@ async def poll(ctx, *args):
         message = await ctx.send(embed=embedMsg)
         await message.add_reaction("👍")
         await message.add_reaction("👎")
+
+
+@bot.command(pass_context=True, aliases=["a", "preguntar", "pr"])
+async def ask(ctx, *args):
+    await ctx.send(":clock10: Generando respuesta.")
+    response = generate_response(" ".join(args))
+    await ctx.send(f":e_mail: Respuesta: ```{response}```")
+    await tts(ctx, response)
 
 
 @tasks.loop(seconds=1, reconnect=True)
@@ -265,4 +276,5 @@ async def clear_bot(voice_client):
 if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = VoiceChannel()
+    init(get_openai_key())
     bot.run(get_bot_key(), bot=True)

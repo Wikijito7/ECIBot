@@ -1,7 +1,7 @@
 from os import path
 import discord
-from utils import path_exits, audio_path
-
+from utils import path_exists, audio_path
+from enum import Enum
 
 class VoiceChannel:
     def __init__(self):
@@ -14,10 +14,36 @@ class VoiceChannel:
         self.voice_channel = voice_channel
 
 
-def get_audio(name):
-    path = f"{audio_path()}/{name}.mp3"
+class Sound:
+    def __init__(self, name, type_of_audio, audio):
+        self.name = name
+        self.type_of_audio = type_of_audio
+        self.audio = audio
 
-    if path_exits(path):
+
+    def get_name(self):
+        return self.name
+
+
+    def get_audio(self):
+        return self.audio
+
+
+    def get_type_of_audio(self):
+        return self.type_of_audio
+
+
+class SoundType(Enum):
+    TTS = 0
+    YT = 1
+    SOUND = 2
+
+def generate_audio_path(name):
+    return f"{audio_path()}/{name}.mp3"
+
+
+def get_audio(path):
+    if path_exists(path):
         return discord.FFmpegPCMAudio(source=path)
     
     else:
@@ -30,13 +56,13 @@ async def disconnect(client):
 
 async def play_sound(client, text, audio):
     if audio != None:
-        client.play(source=get_audio(audio))
-        await text.send(f":notes: Reproduciendo `{audio}` en `{client.channel.name}`.")
+        client.play(source=get_audio(audio.get_audio()))
+        await text.send(f":notes: Reproduciendo `{audio.get_name()}` en `{client.channel.name}`.")
 
 
 async def play_sound_no_message(client, audio):
     if audio != None:
-        client.play(source=get_audio(audio))
+        client.play(source=get_audio(audio.get_audio()))
 
 
 if __name__ == "__main__":

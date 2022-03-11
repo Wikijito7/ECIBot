@@ -19,7 +19,8 @@ def get_openai_key():
 
         return claves["openai_key"]
 
-def path_exits(path):
+
+def path_exists(path):
     return os.path.exists(path)
 
 
@@ -46,13 +47,14 @@ def get_speed(text):
     words = text.split(" ")
 
     if len(words) < 16:
-        return 1.1
+        return 1.05
 
     elif len(words) < 32:
-        return 1.2
+        return 1.1
     
     else:
-        return 1.3
+        return 1.2
+
 
 if __name__ == "__main__":
     pass

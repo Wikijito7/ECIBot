@@ -1,9 +1,5 @@
 import random
-import time
-import requests
-import datetime
-import os
-from io import BytesIO
+import traceback
 
 import discord
 from discord.ext import tasks
@@ -112,8 +108,13 @@ async def sonidos(ctx):
 
 
 @bot.command(pass_context=True, aliases=["p"])
-async def play(ctx, audio_name):
+async def play(ctx, *args):
     ch = None
+
+    if len(args) > 5:
+        await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
+        return
+
     for channel in ctx.author.guild.voice_channels:
         if len(channel.members) > 0 and ctx.author in channel.members:
             ch = channel
@@ -121,25 +122,26 @@ async def play(ctx, audio_name):
 
     if ch != None:
         channel_text.set_text_channel(ctx.channel)
-        audio = generate_audio_path(audio_name)
-        if path_exists(audio):
-            sound = Sound(audio_name, SoundType.SOUND, audio)
-            if voice_channel.get_voice_channel() == None:
-                client = await ch.connect()
-                voice_channel.set_voice_channel(client)
-                sound_queue.append(sound)
-                bot_vitals.start()
-
-            else:
-                if sound not in sound_queue:
-                    await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
+        for audio_name in args:
+            audio = generate_audio_path(audio_name)
+            if path_exists(audio):
+                sound = Sound(audio_name, SoundType.SOUND, audio)
+                if voice_channel.get_voice_channel() == None:
+                    client = await ch.connect()
+                    voice_channel.set_voice_client(client)
                     sound_queue.append(sound)
-                
-                else:
-                    await ctx.send(f":robot: `{audio_name}` ya está en la cola.. (!queue).")
+                    bot_vitals.start()
 
-        else: 
-            await ctx.send(f"`{audio_name}` no existe.. :frowning:")
+                else:
+                    if sound not in sound_queue:
+                        await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
+                        sound_queue.append(sound)
+                    
+                    else:
+                        await ctx.send(f":robot: `{audio_name}` ya está en la cola.. (!queue).")
+
+            else: 
+                await ctx.send(f"`{audio_name}` no existe.. :frowning:")
             
     else:
         await ctx.send("No estás en ningún canal conectado.. :confused:")
@@ -164,7 +166,7 @@ async def tts(ctx, *args):
         tts_sound = await generate_tts(text, get_speed(text))
         client = await ch.connect()
         await ctx.send(f":microphone: Reproduciendo tts en `{client.channel.name}`.")
-        voice_channel.set_voice_channel(client)
+        voice_channel.set_voice_client(client)
         client.play(source=tts_sound)
         bot_vitals.start()
 
@@ -174,7 +176,8 @@ async def queue(ctx):
     embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
 
     if len(sound_queue) > 0:
-        embedMsg.add_field(name="Sonidos en cola", value=", ".join(sound_queue), inline=False)
+        sounds = map(lambda sound: sound.get_name(), sound_queue)
+        embedMsg.add_field(name="Sonidos en cola", value=", ".join(sounds), inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -232,15 +235,21 @@ async def youtube(ctx, args):
         channel_text.set_text_channel(ctx.channel)
         await ctx.send(":clock10: Buscando en YouTube..")
         await get_youtube_video(args, youtube_listener)
+            
+        for channel in ctx.author.guild.voice_channels:
+            if len(channel.members) > 0 and ctx.author in channel.members:
+                voice_channel.set_voice_channel(channel)
+                break
 
 
 def youtube_listener(e):
     if e['status'] == 'finished':
-        filename = e['filename'].replace(".mp3", "")
-        sound = Sound(filename, SoundType.YT, e['filename'])
-        ctx = channel_text.get_text_channel()
-
-        if voice_channel.get_voice_channel() == None:
+        file_extension = e['filename'].split(".")[-1]
+        original_file = e['filename'].replace(file_extension, "mp3")
+        filename = original_file.replace(yt_base_url, "").replace(".mp3", "")
+        sound = Sound(filename, SoundType.YT, original_file)
+        
+        if not bot_vitals.is_running():
             bot_vitals.start()
 
         sound_queue.append(sound)
@@ -248,13 +257,17 @@ def youtube_listener(e):
 
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
+    if voice_channel.get_voice_client() == None:
+        print("bot_vitals >> No hay ningún cliente conectado..")
+        voice_client = await get_voice_client(voice_channel)
+        print(f"bot_vitals >> Conectando a {voice_client}..")
+        voice_channel.set_voice_client(voice_client)
+
     try:
         for voice_client in bot.voice_clients:
             if not voice_client.is_playing():
                 if len(sound_queue) == 0:
-                    await voice_client.disconnect()
-                    voice_channel.set_voice_channel(None)
-                    bot_vitals.stop()
+                    await clear_bot(voice_client)
                     clear_tts()
 
                 else:
@@ -263,7 +276,9 @@ async def bot_vitals():
 
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
+        traceback.print_exc()
         voice_channel.set_voice_channel(None)
+        voice_channel.set_voice_client(None)
         clear_tts()
         bot_vitals.stop()
 
@@ -303,6 +318,7 @@ async def kiwi():
 async def clear_bot(voice_client):
     voice_client.stop()
     await voice_client.disconnect()
+    voice_channel.set_voice_client(None)
     voice_channel.set_voice_channel(None)
     bot_vitals.stop()
     sound_queue.clear()

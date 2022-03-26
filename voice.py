@@ -6,12 +6,19 @@ from enum import Enum
 class VoiceChannel:
     def __init__(self):
         self.voice_channel = None
+        self.voice_client = None
 
     def get_voice_channel(self):
         return self.voice_channel
 
-    def set_voice_channel(self,voice_channel):
+    def set_voice_channel(self, voice_channel):
         self.voice_channel = voice_channel
+
+    def get_voice_client(self):
+        return self.voice_client
+
+    def set_voice_client(self, voice_client):
+        self.voice_client = voice_client
 
 
 class Sound:
@@ -63,6 +70,15 @@ async def play_sound(client, text, audio):
 async def play_sound_no_message(client, audio):
     if audio != None:
         client.play(source=get_audio(audio.get_audio()))
+
+
+async def get_voice_client(voice_channel):
+    if voice_channel.get_voice_client() != None:
+        return voice_channel.get_voice_client()
+
+    else:
+        return await voice_channel.get_voice_channel().connect()
+        
 
 
 if __name__ == "__main__":

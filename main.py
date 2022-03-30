@@ -234,8 +234,16 @@ async def youtube(ctx, args):
     if len(args) > 0:
         channel_text.set_text_channel(ctx.channel)
         await ctx.send(":clock10: Buscando en YouTube..")
-        await get_youtube_video(args, youtube_listener)
-            
+        video_info = get_video_info(args)
+        if video_info != None and int(video_info['duration']) < MAX_VIDEO_DURATION:
+            get_youtube_video(args, youtube_listener)
+        
+        elif video_info != None and int(video_info['duration']) > MAX_VIDEO_DURATION:
+            await ctx.send(":no_entry_sign: El video es muy largo.")
+
+        else:
+            await ctx.send(":no_entry_sign: No se encontró ningún video.")
+        
         for channel in ctx.author.guild.voice_channels:
             if len(channel.members) > 0 and ctx.author in channel.members:
                 voice_channel.set_voice_channel(channel)
@@ -257,7 +265,7 @@ def youtube_listener(e):
 
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
-    if voice_channel.get_voice_client() == None:
+    if voice_channel.get_voice_client() == None and voice_channel.get_voice_channel() != None:
         print("bot_vitals >> No hay ningún cliente conectado..")
         voice_client = await get_voice_client(voice_channel)
         print(f"bot_vitals >> Conectando a {voice_client}..")
@@ -269,6 +277,7 @@ async def bot_vitals():
                 if len(sound_queue) == 0:
                     await clear_bot(voice_client)
                     clear_tts()
+                    clear_yt()
 
                 else:
                     await play_sound(voice_client, channel_text.get_text_channel(), sound_queue[0])
@@ -300,16 +309,15 @@ async def kiwi():
         
         if play_sound:
             try:
+                voice_client = await eci_channel.connect()
+                voice_channel.set_voice_client(voice_channel)
                 if (first_random == second_random):
-                    voice_client = await eci_channel.connect()
                     await play_sound_no_message(voice_client, Sound("a", SoundType.SOUND, generate_audio_path("a")))
-                    bot_vitals.start()
 
             
                 elif (abs(first_random - second_random) <= kiwi_chance):
-                    voice_client = await eci_channel.connect()
                     await play_sound_no_message(voice_client, Sound("kiwi", SoundType.SOUND, generate_audio_path("kiwi")))
-                    bot_vitals.start()
+                bot_vitals.start()
 
             except discord.errors.ClientException as exc:
                 print(">> Exception captured.. Something happened at kiwi()")

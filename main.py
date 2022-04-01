@@ -25,7 +25,13 @@ kiwi_chance = 500
 @bot.event
 async def on_ready():
     print('{0.user} is alive!'.format(bot))
-    await bot.change_presence(activity=discord.Game("~bip-bop"))
+    if is_debug_mode():
+        print(">> Debug mode is ON")
+        await bot.change_presence(status=discord.Status.idle, activity=discord.Game("~debug mode on"))
+
+    else:
+        await bot.change_presence(activity=discord.Game("~bip-bop"))
+
     sdos = bot.get_guild(689108711452442667)
     if sdos is not None:
         await sdos.me.edit(nick="Fran López")
@@ -59,7 +65,6 @@ async def on_error(event, *args, **kwargs):
 
 @bot.event
 async def on_message(message):
-    # 378213328570417154
     if message.author.id == 378213328570417154:
         emoji = "🍆"
         await message.add_reaction(emoji)
@@ -91,6 +96,7 @@ async def help(ctx):
     embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
+    embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado. Admite vídeos de menos de 6 minutos.", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -115,6 +121,10 @@ async def play(ctx, *args):
         await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
         return
 
+    if len(args) == 0:
+        await ctx.send("Argumentos no validos. Revisa cómo la has liado, humano.")
+        return
+
     for channel in ctx.author.guild.voice_channels:
         if len(channel.members) > 0 and ctx.author in channel.members:
             ch = channel
@@ -126,7 +136,7 @@ async def play(ctx, *args):
             audio = generate_audio_path(audio_name)
             if path_exists(audio):
                 sound = Sound(audio_name, SoundType.SOUND, audio)
-                if voice_channel.get_voice_channel() == None:
+                if voice_channel.get_voice_client() == None:
                     client = await ch.connect()
                     voice_channel.set_voice_client(client)
                     sound_queue.append(sound)
@@ -235,19 +245,22 @@ async def youtube(ctx, args):
         channel_text.set_text_channel(ctx.channel)
         await ctx.send(":clock10: Buscando en YouTube..")
         video_info = get_video_info(args)
-        if video_info != None and int(video_info['duration']) < MAX_VIDEO_DURATION:
-            get_youtube_video(args, youtube_listener)
-        
-        elif video_info != None and int(video_info['duration']) > MAX_VIDEO_DURATION:
-            await ctx.send(":no_entry_sign: El video es muy largo.")
+        if video_info != None:
+            duration = int(video_info['duration'])
+            print(f"video duration: {duration}")
+            if duration < MAX_VIDEO_DURATION:
+                await ctx.send(":clock10: Descargando vídeo..")
+                get_youtube_video(args, youtube_listener)
+                for channel in ctx.author.guild.voice_channels:
+                    if len(channel.members) > 0 and ctx.author in channel.members:
+                        voice_channel.set_voice_channel(channel)
+                        break
+            
+            else:
+                await ctx.send(":no_entry_sign: El video es muy largo.")
 
         else:
             await ctx.send(":no_entry_sign: No se encontró ningún video.")
-        
-        for channel in ctx.author.guild.voice_channels:
-            if len(channel.members) > 0 and ctx.author in channel.members:
-                voice_channel.set_voice_channel(channel)
-                break
 
 
 def youtube_listener(e):
@@ -276,20 +289,27 @@ async def bot_vitals():
             if not voice_client.is_playing():
                 if len(sound_queue) == 0:
                     await clear_bot(voice_client)
-                    clear_tts()
-                    clear_yt()
 
                 else:
-                    await play_sound(voice_client, channel_text.get_text_channel(), sound_queue[0])
+                    sound = sound_queue[0]
+                    if sound.get_type_of_audio() == SoundType.KIWI:
+                        await play_sound_no_message(voice_client, sound)
+
+                    else:
+                        await play_sound(voice_client, channel_text.get_text_channel(), sound)
                     sound_queue.pop(0)
+            break
+
+        else:
+            print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola..")
+            await clear_bot(None)
+
+            
 
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
         traceback.print_exc()
-        voice_channel.set_voice_channel(None)
-        voice_channel.set_voice_client(None)
-        clear_tts()
-        bot_vitals.stop()
+        await clear_bot(None)
 
 
 @tasks.loop(minutes=1)
@@ -309,27 +329,45 @@ async def kiwi():
         
         if play_sound:
             try:
-                voice_client = await eci_channel.connect()
-                voice_channel.set_voice_client(voice_channel)
+                sound_name = None
                 if (first_random == second_random):
-                    await play_sound_no_message(voice_client, Sound("a", SoundType.SOUND, generate_audio_path("a")))
+                    sound_name = "a"
 
-            
                 elif (abs(first_random - second_random) <= kiwi_chance):
-                    await play_sound_no_message(voice_client, Sound("kiwi", SoundType.SOUND, generate_audio_path("kiwi")))
-                bot_vitals.start()
+                    if first_random % 2 == 0:
+                        sound_name = "kiwi"
+
+                    else:
+                        sound_name = "ohvaya"
+
+                if sound_name != None:
+                    voice_client = await eci_channel.connect()
+                    voice_channel.set_voice_client(voice_channel)
+                    sound = Sound(sound_name, SoundType.KIWI, generate_audio_path(sound_name))
+                    print(f"kiwi >> Playing {sound_name}")
+                    sound_queue.append(sound)
+                    bot_vitals.start()
 
             except discord.errors.ClientException as exc:
                 print(">> Exception captured.. Something happened at kiwi()")
 
 
 async def clear_bot(voice_client):
-    voice_client.stop()
-    await voice_client.disconnect()
+    try:
+        if voice_client != None:
+            voice_client.stop()
+            await voice_client.disconnect()
+
+    except Exception:
+        print(">> Exception captured.. voice_client wasn't connected or something happened at clear_bot()")
+        traceback.print_exc()
+    
     voice_channel.set_voice_client(None)
     voice_channel.set_voice_channel(None)
     bot_vitals.stop()
     sound_queue.clear()
+    clear_tts()
+    clear_yt()
 
 
 if __name__ == "__main__":

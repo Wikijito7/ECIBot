@@ -11,6 +11,7 @@ def check_base_dir():
 
 
 def clear_yt():
+    check_base_dir()
     for file in os.listdir(yt_base_url):
         os.remove(os.path.join(yt_base_url, file))
 

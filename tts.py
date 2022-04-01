@@ -19,6 +19,7 @@ def check_base_dir():
 
 
 def clear_tts():
+    check_base_dir()
     for file in os.listdir(baseUrl):
         os.remove(os.path.join(baseUrl, file))
 

@@ -44,6 +44,7 @@ class SoundType(Enum):
     TTS = 0
     YT = 1
     SOUND = 2
+    KIWI = 3
 
 def generate_audio_path(name):
     return f"{audio_path()}/{name}.mp3"

@@ -20,6 +20,12 @@ def get_openai_key():
         return claves["openai_key"]
 
 
+def is_debug_mode():
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+        return claves["debug"]
+
+
 def path_exists(path):
     return os.path.exists(path)
 

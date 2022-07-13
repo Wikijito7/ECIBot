@@ -1,4 +1,5 @@
 from os import path
+import time
 import discord
 from utils import path_exists, audio_path
 from enum import Enum
@@ -78,8 +79,7 @@ async def get_voice_client(voice_channel):
         return voice_channel.get_voice_client()
 
     else:
-        return await voice_channel.get_voice_channel().connect()
-        
+        return await voice_channel.get_voice_channel().connect()        
 
 
 if __name__ == "__main__":

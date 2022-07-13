@@ -57,7 +57,7 @@ def report_progress(block_num, block_size, total_size):
 
 
 async def generate_tts(text, speed):
-    if len(text) > 64:
+    if len(text) > 256:
         return await get_google_tts(text, speed)
 
     else:

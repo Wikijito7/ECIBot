@@ -11,7 +11,9 @@ from text import TextChannel
 from tts import generate_tts, clear_tts
 from gpt3 import *
 from youtube import *
-
+from threads import launch
+from dalle import ResponseType, generate_images, clear_dalle
+from threading import Event
 
 intents = discord.Intents.default()
 intents.members = True
@@ -19,8 +21,11 @@ bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True
 bot.remove_command("help")
 
 sound_queue = []
+dalle_results_queue = []
 max_number = 10000
 kiwi_chance = 500
+youtube_event = Event()
+dalle_event = Event()
 
 @bot.event
 async def on_ready():
@@ -36,6 +41,7 @@ async def on_ready():
     if sdos is not None:
         await sdos.me.edit(nick="Fran López")
     kiwi.start()
+    event_listener.start()
     
 
 @bot.event
@@ -97,6 +103,8 @@ async def help(ctx):
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
     embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado. Admite vídeos de menos de 6 minutos.", inline=False)
+    embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
+    embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -111,6 +119,22 @@ async def sonidos(ctx):
         embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
 
     await ctx.send(embed=embedMsg)
+
+
+@bot.command(pass_context=True, aliases=["buscar", "b"])
+async def search(ctx, arg):
+    blank_space = "\u2800"
+    sounds_list = get_sound_list_filtered(arg)
+    if len(sounds_list[0]) > 0:
+        embedMsg = discord.Embed(title="Lista de sonidos", description=f"Sonidos que contienen `{arg}` en su nombre", color=0x01B05B)
+        for sound_block in sounds_list:
+            if len(sound_block) > 0:
+                embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
+
+        await ctx.send(embed=embedMsg)
+    
+    else:
+        await ctx.send(f":robot: No he encontrado ningún sonido que contenga `{arg}`.")
 
 
 @bot.command(pass_context=True, aliases=["p"])
@@ -247,10 +271,9 @@ async def youtube(ctx, args):
         video_info = get_video_info(args)
         if video_info != None:
             duration = int(video_info['duration'])
-            print(f"video duration: {duration}")
             if duration < MAX_VIDEO_DURATION:
                 await ctx.send(":clock10: Descargando vídeo..")
-                get_youtube_video(args, youtube_listener)
+                launch(lambda: get_youtube_video(args, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:
                     if len(channel.members) > 0 and ctx.author in channel.members:
                         voice_channel.set_voice_channel(channel)
@@ -263,17 +286,33 @@ async def youtube(ctx, args):
             await ctx.send(":no_entry_sign: No se encontró ningún video.")
 
 
+@bot.command(pass_context=True, aliases=["d"])
+async def dalle(ctx, *args):
+    text = " ".join(args)
+
+    if not text.strip():
+        await ctx.send("No has escrito nada.. :confused:")
+        return
+
+    channel_text.set_text_channel(ctx.channel)
+    await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos..")
+    launch(lambda: generate_images(text, dalle_listener))
+
+
 def youtube_listener(e):
     if e['status'] == 'finished':
         file_extension = e['filename'].split(".")[-1]
         original_file = e['filename'].replace(file_extension, "mp3")
         filename = original_file.replace(yt_base_url, "").replace(".mp3", "")
         sound = Sound(filename, SoundType.YT, original_file)
-        
-        if not bot_vitals.is_running():
-            bot_vitals.start()
-
         sound_queue.append(sound)
+        youtube_event.set()
+
+
+def dalle_listener(result):
+    print()
+    dalle_results_queue.append(result)
+    dalle_event.set()
 
 
 @tasks.loop(seconds=1, reconnect=True)
@@ -316,7 +355,7 @@ async def bot_vitals():
 async def kiwi():
     first_random = random.randrange(1, max_number)
     second_random = random.randrange(1, max_number)
-    eci_channel = bot.get_channel(689385180921724954)
+    eci_channel = bot.get_channel(969557887305265184)
 
     if eci_channel is not None and len(eci_channel.members) > 1:
         play_sound = True
@@ -352,6 +391,23 @@ async def kiwi():
                 print(">> Exception captured.. Something happened at kiwi()")
 
 
+@tasks.loop(seconds=1)
+async def dalle_vitals():
+    for result in dalle_results_queue:
+        if result.get_response_type() == ResponseType.SUCCESS:
+            with open(result.get_image(), "rb") as image_file:
+                await channel_text.get_text_channel().send(":e_mail: Imagen recibida:", file=discord.File(image_file, filename="dalle.png"))
+
+        else:
+            await channel_text.get_text_channel().send(":confused: Ha ocurrido un error generando la imagen. Intenta de nuevo.")
+        dalle_results_queue.remove(result)
+
+    else:
+        dalle_vitals.stop()
+        clear_dalle()
+
+
+
 async def clear_bot(voice_client):
     try:
         if voice_client != None:
@@ -368,6 +424,18 @@ async def clear_bot(voice_client):
     sound_queue.clear()
     clear_tts()
     clear_yt()
+
+@tasks.loop(seconds=1)
+async def event_listener():
+    if youtube_event.is_set():
+        youtube_event.clear()
+        if not bot_vitals.is_running():
+            bot_vitals.start()
+
+    if dalle_event.is_set():
+        dalle_event.clear()
+        if not dalle_vitals.is_running():
+            dalle_vitals.start()
 
 
 if __name__ == "__main__":

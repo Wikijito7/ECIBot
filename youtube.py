@@ -1,4 +1,4 @@
-import youtube_dl
+import yt_dlp
 import os
 
 yt_base_url = "./yt/"
@@ -28,27 +28,26 @@ def get_video_info(url):
                 'preferredquality': '92',
             }],
         }
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(url, download=False)
 
     except Exception:
         return None
 
-
-def get_youtube_video(url, listener):
+def get_youtube_dlp_video(url, listener):
     check_base_dir()
     print(f"youtube: get_youtube_video >> {url}")
     ydl_opts = {
         'outtmpl':f'{yt_base_url}%(title)s.%(ext)s',
         'extractaudio': True,
-        'format': 'worstaudio/140/17/36/22',
+        'format': 'm4a/bestaudio/best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '92',
+            'preferredquality': '192',
         }],
         'progress_hooks': [listener],
     }
 
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])

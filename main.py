@@ -12,7 +12,7 @@ from tts import generate_tts, clear_tts
 from gpt3 import *
 from youtube import *
 from threads import launch
-from dalle import ResponseType, generate_images, clear_dalle
+from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
 from threading import Event
 
 intents = discord.Intents.default()
@@ -36,11 +36,11 @@ async def on_ready():
 
     else:
         await bot.change_presence(activity=discord.Game("~bip-bop"))
+        kiwi.start()
 
     sdos = bot.get_guild(689108711452442667)
     if sdos is not None:
         await sdos.me.edit(nick="Fran López")
-    kiwi.start()
     event_listener.start()
     
 
@@ -273,7 +273,7 @@ async def youtube(ctx, args):
             duration = int(video_info['duration'])
             if duration < MAX_VIDEO_DURATION:
                 await ctx.send(":clock10: Descargando vídeo..")
-                launch(lambda: get_youtube_video(args, youtube_listener))
+                launch(lambda: get_youtube_dlp_video(args, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:
                     if len(channel.members) > 0 and ctx.author in channel.members:
                         voice_channel.set_voice_channel(channel)
@@ -310,7 +310,6 @@ def youtube_listener(e):
 
 
 def dalle_listener(result):
-    print()
     dalle_results_queue.append(result)
     dalle_event.set()
 
@@ -394,9 +393,12 @@ async def kiwi():
 @tasks.loop(seconds=1)
 async def dalle_vitals():
     for result in dalle_results_queue:
+        print(f"dale_vitals >> Hay imágenes en la cola: {len(dalle_results_queue)} imágenes")
         if result.get_response_type() == ResponseType.SUCCESS:
             with open(result.get_image(), "rb") as image_file:
                 await channel_text.get_text_channel().send(":e_mail: Imagen recibida:", file=discord.File(image_file, filename="dalle.png"))
+
+            remove_image_from_memory(result.get_image())
 
         else:
             await channel_text.get_text_channel().send(":confused: Ha ocurrido un error generando la imagen. Intenta de nuevo.")
@@ -404,8 +406,18 @@ async def dalle_vitals():
 
     else:
         dalle_vitals.stop()
-        clear_dalle()
 
+@tasks.loop(seconds=1)
+async def event_listener():
+    if youtube_event.is_set():
+        youtube_event.clear()
+        if not bot_vitals.is_running():
+            bot_vitals.start()
+
+    if dalle_event.is_set() or len(dalle_results_queue) > 0:
+        dalle_event.clear()
+        if not dalle_vitals.is_running():
+            dalle_vitals.start()
 
 
 async def clear_bot(voice_client):
@@ -424,18 +436,6 @@ async def clear_bot(voice_client):
     sound_queue.clear()
     clear_tts()
     clear_yt()
-
-@tasks.loop(seconds=1)
-async def event_listener():
-    if youtube_event.is_set():
-        youtube_event.clear()
-        if not bot_vitals.is_running():
-            bot_vitals.start()
-
-    if dalle_event.is_set():
-        dalle_event.clear()
-        if not dalle_vitals.is_running():
-            dalle_vitals.start()
 
 
 if __name__ == "__main__":

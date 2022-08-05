@@ -35,6 +35,13 @@ def clear_dalle():
     for file in os.listdir(base_url):
         os.remove(os.path.join(base_url, file))
 
+def remove_image_from_memory(image_name):
+    try:
+        os.remove(os.path.join(base_url, image_name))
+
+    except Exception as e:
+        print(f"remove_image_from_memory >> Error al intentar borrar la imagen {image_name}: {str(e)}")
+
 # Doing a similar image proccesing as in https://github.com/borisdayma/dalle-mini/blob/main/app/gradio/backend.py
 def generate_images(text, listener):
     try:

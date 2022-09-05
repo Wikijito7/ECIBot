@@ -4,6 +4,7 @@ import traceback
 import discord
 from discord.ext import tasks
 from discord.ext import commands
+from threading import Event
 
 from utils import *
 from voice import *
@@ -13,7 +14,6 @@ from gpt3 import *
 from youtube import *
 from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
-from threading import Event
 
 intents = discord.Intents.default()
 intents.members = True
@@ -442,4 +442,4 @@ if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = VoiceChannel()
     init(get_openai_key())
-    bot.run(get_bot_key(), bot=True)
+    bot.run(get_bot_key())

@@ -7,7 +7,7 @@ import ffmpy
 from utils import get_speed
 import hashlib
 from urllib.parse import quote
-from urllib.request import urlopen, urlretrieve
+from urllib.request import urlretrieve
 
 
 baseUrl = "./tts/"

@@ -1,0 +1,5 @@
+{
+    "key": "your-discord-key",
+    "openai_key":"your-openai-key",
+	"debug": false
+}

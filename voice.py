@@ -1,5 +1,3 @@
-from os import path
-import time
 import discord
 from utils import path_exists, audio_path
 from enum import Enum

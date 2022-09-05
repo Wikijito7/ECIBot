@@ -2,10 +2,10 @@
 A custom Discord bot made in Python.
 
 ## Index
-* [Pre-requisites](https://github.com/Wikijito7/ECIBot/blob/main/README.md#pre-requisites)
-* [How to run it](https://github.com/Wikijito7/ECIBot/blob/main/README.md#how-to-run-it)
-* [How it works](https://github.com/Wikijito7/ECIBot/blob/main/README.md#how-it-works)
-* [TODO](https://github.com/Wikijito7/ECIBot/blob/main/README.md#todo)
+* [Pre-requisites](https://github.com/Wikijito7/ECIBot#pre-requisites)
+* [How to run it](https://github.com/Wikijito7/ECIBot#how-to-run-it)
+* [How it works](https://github.com/Wikijito7/ECIBot#how-it-works)
+* [TODO](https://github.com/Wikijito7/ECIBot#todo)
 
 ## Pre-requisites
 * Python 3.7+.

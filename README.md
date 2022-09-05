@@ -17,7 +17,7 @@ A custom Discord bot made in Python.
 * First of all, let's make sure we've got java install. To do so, run `python -V`. If we have at least Python 3.7, we can continue. If not, install a more recent Python version and come back. 
 **NOTE**: Older Python3 versions may work as well but it hasn't been tested, so procede at your own risk.
 * Download the code:
-    * Clone the project and compile the code. To do so, download it from the green button at the top or execute `git clone https://github.com/Wikijito7/ECIBot.git`. Once downloaded, we can modify some parameters of the [config](https://github.com/Wikijito7/ECIBot/blob/main/data/keys.json) file in order to add our Discord key. Adittionaly, add an OpenAI key to enable some extra functionallity. After that, install the [requirements](https://github.com/Wikijito7/ECIBot/blob/main/requirements.md)), to do so, open a terminal and execute `pip install -r requirements.txt`.
+    * Clone the project and compile the code. To do so, download it from the green button at the top or execute `git clone https://github.com/Wikijito7/ECIBot.git`. Once downloaded, we can modify some parameters of the [config](https://github.com/Wikijito7/ECIBot/blob/main/data/keys.json) file in order to add our Discord key. Adittionaly, add an OpenAI key to enable some extra functionallity. After that, install the [requirements](https://github.com/Wikijito7/ECIBot/blob/main/requirements.txt)), to do so, open a terminal and execute `pip install -r requirements.txt`.
 * We're almost done! Now execute the main script, to do so open a terminal and execute `python main.py`.
 * We've finished! Now you can start using the bot.
 

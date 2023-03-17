@@ -14,6 +14,7 @@ from gpt3 import *
 from youtube import *
 from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
+from datetime import datetime, time
 
 intents = discord.Intents.default()
 intents.members = True
@@ -367,8 +368,13 @@ async def kiwi():
         
         if play_sound:
             try:
+                current_time = datetime.now().time().replace(second=0, microsecond=0)
                 sound_name = None
-                if (first_random == second_random):
+
+                if (current_time == time(12, 6)):
+                    sound_name = "1206"
+
+                elif (first_random == second_random):
                     sound_name = "a"
 
                 elif (abs(first_random - second_random) <= kiwi_chance):

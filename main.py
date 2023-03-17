@@ -27,6 +27,8 @@ max_number = 10000
 kiwi_chance = 500
 youtube_event = Event()
 dalle_event = Event()
+tts_event = Event()
+
 
 @bot.event
 async def on_ready():
@@ -196,14 +198,12 @@ async def tts(ctx, *args):
             ch = channel
             break
 
-    if voice_channel.get_voice_channel() == None:
-        await ctx.send(":tools::snail: Generando mensaje tts..")
-        tts_sound = await generate_tts(text, get_speed(text))
-        client = await ch.connect()
-        await ctx.send(f":microphone: Reproduciendo tts en `{client.channel.name}`.")
-        voice_channel.set_voice_client(client)
-        client.play(source=tts_sound)
-        bot_vitals.start()
+    if ch != None:
+        channel_text.set_text_channel(ctx.channel)
+        voice_channel.set_voice_channel(ch)
+
+    await ctx.send(":tools::snail: Generando mensaje tts..")
+    launch(lambda: generate_tts(text, get_speed(text), tts_listener))        
 
 
 @bot.command(pass_context=True, aliases=["q", "cola"])
@@ -315,6 +315,13 @@ def dalle_listener(result):
     dalle_event.set()
 
 
+def tts_listener(original_file):
+    filename = original_file.replace(".mp3", "")
+    sound = Sound(filename, SoundType.TTS, original_file)
+    sound_queue.append(sound)
+    youtube_event.set()
+
+
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
     if voice_channel.get_voice_client() == None and voice_channel.get_voice_channel() != None:
@@ -334,6 +341,10 @@ async def bot_vitals():
                     if sound.get_type_of_audio() == SoundType.KIWI:
                         await play_sound_no_message(voice_client, sound)
 
+                    if sound.get_type_of_audio() == SoundType.TTS:
+                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo tts en `{channel_text.get_text_channel().name}`.")
+                        await play_sound_no_message(voice_client, sound)
+
                     else:
                         await play_sound(voice_client, channel_text.get_text_channel(), sound)
                     sound_queue.pop(0)
@@ -342,8 +353,6 @@ async def bot_vitals():
         else:
             print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola..")
             await clear_bot(None)
-
-            
 
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
@@ -413,6 +422,7 @@ async def dalle_vitals():
     else:
         dalle_vitals.stop()
 
+
 @tasks.loop(seconds=1)
 async def event_listener():
     if youtube_event.is_set():
@@ -424,6 +434,11 @@ async def event_listener():
         dalle_event.clear()
         if not dalle_vitals.is_running():
             dalle_vitals.start()
+
+    if tts_event.is_set():
+        tts_event.clear()
+        if not bot_vitals.is_running():
+            bot_vitals.start()
 
 
 async def clear_bot(voice_client):

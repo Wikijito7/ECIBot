@@ -12,6 +12,7 @@ from text import TextChannel
 from tts import generate_tts, clear_tts
 from gpt3 import *
 from youtube import *
+from bd import Database
 from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
 from datetime import datetime, time
@@ -23,11 +24,13 @@ bot.remove_command("help")
 
 sound_queue = []
 dalle_results_queue = []
+ask_results_queue = []
 max_number = 10000
 kiwi_chance = 500
 youtube_event = Event()
 dalle_event = Event()
 tts_event = Event()
+ask_event = Event()
 
 
 @bot.event
@@ -157,22 +160,30 @@ async def play(ctx, *args):
             ch = channel
             break
 
+    print("canal voz ", ch)
+
     if ch != None:
         channel_text.set_text_channel(ctx.channel)
+        print("canal texto: ", ctx.channel)
         for audio_name in args:
+            print("nombre audio:", audio_name)
             audio = generate_audio_path(audio_name)
             if path_exists(audio):
+                print("audio: ", audio)
                 sound = Sound(audio_name, SoundType.SOUND, audio)
+                print("voice_channel.get_voice_client() ", voice_channel.get_voice_client())
                 if voice_channel.get_voice_client() == None:
                     client = await ch.connect()
                     voice_channel.set_voice_client(client)
                     sound_queue.append(sound)
+                    print("Sound queue: ", sound_queue)
                     bot_vitals.start()
 
                 else:
                     if sound not in sound_queue:
                         await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
                         sound_queue.append(sound)
+                        print("Sound queue: ", sound_queue)
                     
                     else:
                         await ctx.send(f":robot: `{audio_name}` ya está en la cola.. (!queue).")
@@ -259,9 +270,8 @@ async def poll(ctx, *args):
 @bot.command(pass_context=True, aliases=["a", "preguntar", "pr"])
 async def ask(ctx, *args):
     await ctx.send(":clock10: Generando respuesta.")
-    response = generate_response(" ".join(args))
-    await ctx.send(f":e_mail: Respuesta: ```{response}```")
-    await tts(ctx, response)
+    channel_text.set_text_channel(ctx.channel)
+    launch(generate_response(" ".join(args), ask_listener)) # .strip("\"").strip("\'")
 
 
 @bot.command(pass_context=True, aliases=["yt"])
@@ -321,6 +331,10 @@ def tts_listener(original_file):
     sound_queue.append(sound)
     youtube_event.set()
 
+def ask_listener(result):
+    ask_results_queue.append(result)
+    ask_event.set()
+
 
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
@@ -364,17 +378,16 @@ async def bot_vitals():
 async def kiwi():
     first_random = random.randrange(1, max_number)
     second_random = random.randrange(1, max_number)
-    eci_channel = bot.get_channel(969557887305265184)
+    # eci_channel = bot.get_channel(969557887305265184)
+    eci_channel = bot.get_channel(613077994394877976)
 
-    if eci_channel is not None and len(eci_channel.members) > 1:
+    if eci_channel is not None and len(eci_channel.members) > 0:
         play_sound = True
         for voice_client in bot.voice_clients:
             if eci_channel.guild == voice_client.guild:
                 play_sound = False
                 break
-        
-        play_sound = play_sound and bot.get_user(826784718589526057) not in eci_channel.members and bot.get_user(899918332965298176) not in eci_channel.members
-        
+
         if play_sound:
             try:
                 current_time = datetime.now().time().replace(second=0, microsecond=0)
@@ -386,7 +399,7 @@ async def kiwi():
                 elif (first_random == second_random):
                     sound_name = "a"
 
-                elif (abs(first_random - second_random) <= kiwi_chance):
+                elif (abs(first_random - second_random) <= 5000):
                     if first_random % 2 == 0:
                         sound_name = "kiwi"
 
@@ -395,7 +408,8 @@ async def kiwi():
 
                 if sound_name != None:
                     voice_client = await eci_channel.connect()
-                    voice_channel.set_voice_client(voice_channel)
+                    # voice_channel.set_voice_channel(eci_channel)
+                    voice_channel.set_voice_client(voice_client)
                     sound = Sound(sound_name, SoundType.KIWI, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
                     sound_queue.append(sound)
@@ -440,6 +454,18 @@ async def event_listener():
         if not bot_vitals.is_running():
             bot_vitals.start()
 
+    # if ask_event.is_set() or len(ask_results_queue) > 0:
+    #    response = ask_results_queue[0]
+    #    ctx = channel_text.get_text_channel()
+    #    await ctx.send(f":e_mail: Respuesta: ```{response}```")
+    #    await tts(ctx, response)
+
+    #    if not bot_vitals.is_running():
+    #        bot_vitals.start()
+
+    #    ask_event.clear()
+        
+
 
 async def clear_bot(voice_client):
     try:
@@ -462,5 +488,6 @@ async def clear_bot(voice_client):
 if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = VoiceChannel()
+    db = Database()
     init(get_openai_key())
     bot.run(get_bot_key())

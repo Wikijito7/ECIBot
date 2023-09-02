@@ -12,6 +12,13 @@ def get_bot_key():
         claves = json.loads(file.read())
 
         return claves["key"]
+    
+
+def get_database_keys():
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+
+        return claves["key"]
 
 
 def get_openai_key():

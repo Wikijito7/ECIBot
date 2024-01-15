@@ -16,7 +16,7 @@ from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
 from datetime import datetime, time
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True, fetch_offline_members=True)
 bot.remove_command("help")
@@ -27,8 +27,6 @@ max_number = 10000
 kiwi_chance = 500
 youtube_event = Event()
 dalle_event = Event()
-tts_event = Event()
-
 
 @bot.event
 async def on_ready():
@@ -81,7 +79,9 @@ async def on_message(message):
     if message.author.id == 651163679814844467:
         emoji = "😢"
         await message.add_reaction(emoji)
-
+    if message.author.id == 899918332965298176:
+        emoji = "😭"
+        await message.add_reaction(emoji)
     await bot.process_commands(message)
     
     if "francia" in message.content.lower():
@@ -89,6 +89,15 @@ async def on_message(message):
         for emoji in emojies:
             await message.add_reaction(emoji)
 
+    if "españa" in message.content.lower():
+        emojies = ["🆙", "🇪🇸", "❤️‍🔥", "💃", "🥘", "🏖️", "🛌", "🇪🇦"]
+        for emoji in emojies:
+            await message.add_reaction(emoji)
+
+    if "mexico" in message.content.lower():
+        emojies = ["🇲🇽", "🌯", "🌮", "🫔"]
+        for emoji in emojies:
+            await message.add_reaction(emoji)
 
 @bot.event
 async def close():
@@ -144,7 +153,7 @@ async def search(ctx, arg):
 async def play(ctx, *args):
     ch = None
 
-    if len(args) > 5:
+    if len(args) > 999:
         await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
         return
 
@@ -198,12 +207,14 @@ async def tts(ctx, *args):
             ch = channel
             break
 
-    if ch != None:
-        channel_text.set_text_channel(ctx.channel)
-        voice_channel.set_voice_channel(ch)
-
-    await ctx.send(":tools::snail: Generando mensaje tts..")
-    launch(lambda: generate_tts(text, get_speed(text), tts_listener))        
+    if voice_channel.get_voice_channel() == None:
+        await ctx.send(":tools::snail: Generando mensaje tts..")
+        tts_sound = await generate_tts(text, get_speed(text))
+        client = await ch.connect()
+        await ctx.send(f":microphone: Reproduciendo tts en `{client.channel.name}`.")
+        voice_channel.set_voice_client(client)
+        client.play(source=tts_sound)
+        bot_vitals.start()
 
 
 @bot.command(pass_context=True, aliases=["q", "cola"])
@@ -230,6 +241,9 @@ async def jail(ctx):
 
 @bot.command(pass_context=True, aliases=["s"])
 async def stop(ctx):
+    if ctx.author.id == 450960331582472192:
+        return
+
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild and voice_client.is_playing():
             voice_client.stop()
@@ -239,6 +253,9 @@ async def stop(ctx):
 
 @bot.command(pass_context=True, aliases=["dc"])
 async def disconnect(ctx):
+    if ctx.author.id == 450960331582472192:
+        return
+
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild:
             await clear_bot(voice_client)
@@ -303,7 +320,7 @@ async def dalle(ctx, *args):
 def youtube_listener(e):
     if e['status'] == 'finished':
         file_extension = e['filename'].split(".")[-1]
-        original_file = e['filename'].replace(file_extension, "mp3")
+        original_file = e['filename']
         filename = original_file.replace(yt_base_url, "").replace(".mp3", "")
         sound = Sound(filename, SoundType.YT, original_file)
         sound_queue.append(sound)
@@ -313,13 +330,6 @@ def youtube_listener(e):
 def dalle_listener(result):
     dalle_results_queue.append(result)
     dalle_event.set()
-
-
-def tts_listener(original_file):
-    filename = original_file.replace(".mp3", "")
-    sound = Sound(filename, SoundType.TTS, original_file)
-    sound_queue.append(sound)
-    youtube_event.set()
 
 
 @tasks.loop(seconds=1, reconnect=True)
@@ -341,10 +351,6 @@ async def bot_vitals():
                     if sound.get_type_of_audio() == SoundType.KIWI:
                         await play_sound_no_message(voice_client, sound)
 
-                    if sound.get_type_of_audio() == SoundType.TTS:
-                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo tts en `{channel_text.get_text_channel().name}`.")
-                        await play_sound_no_message(voice_client, sound)
-
                     else:
                         await play_sound(voice_client, channel_text.get_text_channel(), sound)
                     sound_queue.pop(0)
@@ -353,6 +359,8 @@ async def bot_vitals():
         else:
             print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola..")
             await clear_bot(None)
+
+            
 
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
@@ -422,7 +430,6 @@ async def dalle_vitals():
     else:
         dalle_vitals.stop()
 
-
 @tasks.loop(seconds=1)
 async def event_listener():
     if youtube_event.is_set():
@@ -434,11 +441,6 @@ async def event_listener():
         dalle_event.clear()
         if not dalle_vitals.is_running():
             dalle_vitals.start()
-
-    if tts_event.is_set():
-        tts_event.clear()
-        if not bot_vitals.is_running():
-            bot_vitals.start()
 
 
 async def clear_bot(voice_client):

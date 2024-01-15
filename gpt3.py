@@ -6,7 +6,7 @@ def init(api_key):
 
 def generate_response(*args):
     response = openai.Completion.create(
-        engine='text-davinci-001',
+        engine='text-davinci-003',
         prompt=" ".join(args),
         temperature=0.7,
         max_tokens=1024)

@@ -24,7 +24,7 @@ def clear_tts():
         os.remove(os.path.join(baseUrl, file))
 
 
-def get_loquendo_tts(text):
+async def get_loquendo_tts(text):
     try:  
         url_encoded_text = quote(text)
         file_name = f"{baseUrl}tts_{str(time.time())}.mp3"
@@ -35,20 +35,20 @@ def get_loquendo_tts(text):
 
         url = f"https://cache-a.oddcast.com/c_fs/{hash_digest}.mp3?engine=2&language=2&voice=6&text={url_encoded_text}&useUTF8=1"
         urlretrieve(url, file_name, report_progress)
-        return file_name
+        return discord.FFmpegPCMAudio(source=file_name)
 
     except Exception:
         print("TTS >> There's an error with the Loquendo TTS, trying with Google tts")
-        return get_google_tts(text, get_speed(text))
+        return await get_google_tts(text, get_speed(text))
 
 
-def get_google_tts(text, speed):
+async def get_google_tts(text, speed):
         tts = gTTS(text=text, lang='es', tld='es')
         file_name = f"{baseUrl}tts_{str(time.time())}.mp3"
         check_base_dir()
         tts.save(file_name)
-        file = change_speed(file_name, speed)
-        return file
+        file = await change_speed(file_name, speed)
+        return discord.FFmpegPCMAudio(source=file)
 
 
 def report_progress(block_num, block_size, total_size):
@@ -56,19 +56,15 @@ def report_progress(block_num, block_size, total_size):
     print("\r%d%%" % percent, end="")
 
 
-def generate_tts(text, speed, listener):
-    audio = None
-
+async def generate_tts(text, speed):
     if len(text) > 256:
-        audio = get_google_tts(text, speed)
+        return await get_google_tts(text, speed)
 
     else:
-        audio = get_loquendo_tts(text)
-
-    listener(audio)
+        return await get_loquendo_tts(text)
 
 
-def change_speed(file_name, speed):
+async def change_speed(file_name, speed):
     try:
         new_file_name = f"{baseUrl}tts_{str(time.time())}.mp3"
         ff = ffmpy.FFmpeg(inputs={file_name: None}, outputs={new_file_name: f"-filter:a atempo={speed}"})

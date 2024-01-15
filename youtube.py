@@ -2,7 +2,7 @@ import yt_dlp
 import os
 
 yt_base_url = "./yt/"
-MAX_VIDEO_DURATION = 360 # in seconds, 6 minutes atm
+MAX_VIDEO_DURATION = 86400 # in seconds, 6 minutes atm
 
 
 def check_base_dir():
@@ -21,7 +21,7 @@ def get_video_info(url):
         ydl_opts = {
             'outtmpl':f'{yt_base_url}%(title)s.%(ext)s',
             'extractaudio': True,
-            'format': 'worstaudio/140/17/36/22',
+            'format': 'worstaudio/250/251/249/140',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -40,12 +40,7 @@ def get_youtube_dlp_video(url, listener):
     ydl_opts = {
         'outtmpl':f'{yt_base_url}%(title)s.%(ext)s',
         'extractaudio': True,
-        'format': 'm4a/bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
+        'format': '249/250/251/m4a/bestaudio/best',
         'progress_hooks': [listener],
     }
 

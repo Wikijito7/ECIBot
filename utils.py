@@ -67,13 +67,13 @@ def get_speed(text):
     words = text.split(" ")
 
     if len(words) < 16:
-        return 1.2
+        return 1.1
 
     elif len(words) < 32:
-        return 1.3
+        return 1.2
     
     else:
-        return 1.4
+        return 1.3
 
 
 def flatten_list(list):

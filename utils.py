@@ -67,10 +67,10 @@ def get_speed(text):
     words = text.split(" ")
 
     if len(words) < 16:
-        return 1.1
+        return 1.2
 
     elif len(words) < 32:
-        return 1.2
+        return 1.3
     
     else:
         return 1.45

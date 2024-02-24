@@ -9,7 +9,7 @@ from threading import Event
 from utils import *
 from voice import *
 from text import TextChannel
-from tts import generate_tts, clear_tts
+from tts import generate_tts, clear_tts, tts_base_url
 from gpt3 import *
 from youtube import *
 from threads import launch
@@ -341,7 +341,7 @@ def dalle_listener(result):
 
 
 def tts_listener(original_file):
-    filename = original_file.replace(".mp3", "")
+    filename = original_file.replace(tts_base_url, "").replace(".mp3", "")
     sound = Sound(filename, SoundType.TTS, original_file)
     sound_queue.append(sound)
     youtube_event.set()
@@ -367,7 +367,7 @@ async def bot_vitals():
                         await play_sound_no_message(voice_client, sound)
 
                     if sound.get_type_of_audio() == SoundType.TTS:
-                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo tts en `{channel_text.get_text_channel().name}`.")
+                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{channel_text.get_text_channel().name}`.")
                         await play_sound_no_message(voice_client, sound)
 
                     else:
@@ -444,6 +444,7 @@ async def dalle_vitals():
         dalle_results_queue.remove(result)
 
     else:
+        clear_dalle()
         dalle_vitals.stop()
 
 @tasks.loop(seconds=1)

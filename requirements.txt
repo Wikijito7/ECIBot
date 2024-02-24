@@ -1,6 +1,7 @@
 discord.py
+discord.py[voice]
 gtts
 Pillow
-yt_dlp
+yt-dlp
 openai
 ffmpy

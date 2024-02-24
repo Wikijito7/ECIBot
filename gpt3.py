@@ -7,7 +7,6 @@ client = None
 def init(api_key):
     global client
     client = OpenAI(api_key=api_key)
-    print(client)
 
 
 def generate_response(*args):

@@ -2,7 +2,7 @@ import yt_dlp
 import os
 
 yt_base_url = "./yt/"
-MAX_VIDEO_DURATION = 86400 # in seconds, 6 minutes atm
+MAX_VIDEO_DURATION = 86400 # in seconds
 MAX_VIDEO_SIZE = 800 * 1024 * 1024 # in bytes
 
 def check_base_dir():

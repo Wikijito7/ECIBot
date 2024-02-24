@@ -293,11 +293,12 @@ async def ask(ctx, *args):
 async def youtube(ctx, args):
     if len(args) > 0:
         channel_text.set_text_channel(ctx.channel)
-        await ctx.send(":clock10: Buscando en YouTube..")
+        await ctx.send(":clock10: Buscando con yt-dlp..")
         video_info = get_video_info(args)
         if video_info != None:
-            duration = int(video_info['filesize'])
-            if duration < MAX_VIDEO_SIZE:
+            filesize = video_info.get('filesize')
+            duration = video_info.get('duration')
+            if (filesize is not None and filesize < MAX_VIDEO_SIZE) or (duration is not None and duration < MAX_VIDEO_DURATION):
                 await ctx.send(":clock10: Descargando vídeo..")
                 launch(lambda: get_youtube_dlp_video(args, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:

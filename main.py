@@ -159,6 +159,7 @@ async def help(ctx):
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
     embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
+    embedMsg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
 
     await ctx.send(embed=embedMsg)
 

@@ -155,9 +155,10 @@ async def help(ctx):
     embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
-    embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado. Admite vídeos de menos de 6 minutos.", inline=False)
+    embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado.", inline=False)
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
+    embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -213,19 +214,15 @@ async def play(ctx, *args):
             audio = generate_audio_path(audio_name)
             if path_exists(audio):
                 sound = Sound(audio_name, SoundType.SOUND, audio)
-                if voice_channel.get_voice_client() == None:
+                if voice_channel.get_voice_client() is None:
                     client = await ch.connect()
                     voice_channel.set_voice_client(client)
                     sound_queue.append(sound)
                     bot_vitals.start()
 
                 else:
-                    if sound not in sound_queue:
-                        await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
-                        sound_queue.append(sound)
-                    
-                    else:
-                        await ctx.send(f":robot: `{audio_name}` ya está en la cola.. (!queue).")
+                    await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
+                    sound_queue.append(sound)
 
             else: 
                 await ctx.send(f"`{audio_name}` no existe.. :frowning:")
@@ -365,6 +362,44 @@ async def dalle(ctx, *args):
     launch(lambda: generate_images(text, dalle_listener))
 
 
+@bot.command(pass_context=True, aliases=["r"])
+async def radio(ctx, arg):
+    ch = None
+
+    stream_url = arg
+    stream_name = "stream de audio"
+
+    if arg.lower() == "lofi" or arg.lower() == "lo-fi":
+        stream_url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
+        stream_name = "Lofi 24/7"
+
+    if not stream_url.startswith("http"):
+        await ctx.send("La URL no parece correcta :confused:")
+        return
+
+    for channel in ctx.author.guild.voice_channels:
+        if len(channel.members) > 0 and ctx.author in channel.members:
+            ch = channel
+            break
+
+    if ch is not None:
+        channel_text.set_text_channel(ctx.channel)
+        sound = Sound(stream_name, SoundType.STREAM, stream_url)
+
+        if voice_channel.get_voice_client() is None:
+            client = await ch.connect()
+            voice_channel.set_voice_client(client)
+            sound_queue.append(sound)
+            bot_vitals.start()
+
+        else:
+            await ctx.send(f":radio: Añadido a la cola `{stream_name}`.")
+            sound_queue.append(sound)
+
+    else:
+        await ctx.send("No estás en ningún canal conectado.. :confused:")
+
+
 def youtube_listener(e):
     if e['status'] == 'finished':
         file_extension = e['filename'].split(".")[-1]
@@ -403,15 +438,17 @@ async def bot_vitals():
 
                 else:
                     sound = sound_queue[0]
-                    if sound.get_type_of_audio() == SoundType.KIWI:
-                        await play_sound_no_message(voice_client, sound)
 
                     if sound.get_type_of_audio() == SoundType.TTS:
                         await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{channel_text.get_text_channel().name}`.")
-                        await play_sound_no_message(voice_client, sound)
+
+                    elif sound.get_type_of_audio() == SoundType.STREAM:
+                        await channel_text.get_text_channel().send(f":radio: Reproduciendo `{sound.get_name()}` en `{channel_text.get_text_channel().name}`.")
 
                     else:
-                        await play_sound(voice_client, channel_text.get_text_channel(), sound)
+                        await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{channel_text.get_text_channel().name}`.")
+
+                    await play_sound(voice_client, sound)
                     sound_queue.pop(0)
             break
 

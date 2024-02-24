@@ -319,11 +319,9 @@ async def youtube(ctx, args):
     if len(args) > 0:
         channel_text.set_text_channel(ctx.channel)
         await ctx.send(":clock10: Buscando con yt-dlp..")
-        video_info = get_video_info(args)
-        if video_info != None:
-            filesize = video_info.get('filesize')
-            duration = video_info.get('duration')
-            if (filesize is not None and filesize < MAX_VIDEO_SIZE) or (duration is not None and duration < MAX_VIDEO_DURATION):
+        yt_dlp_info = extract_yt_dlp_info(args)
+        if yt_dlp_info is not None:
+            if should_download(yt_dlp_info):
                 await ctx.send(":clock10: Descargando vídeo..")
                 launch(lambda: get_youtube_dlp_video(args, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:
@@ -332,10 +330,26 @@ async def youtube(ctx, args):
                         break
 
             else:
-                await ctx.send(":no_entry_sign: El video es muy largo.")
+                await ctx.send(":no_entry_sign: El vídeo es muy largo o pesa mucho.")
 
         else:
             await ctx.send(":no_entry_sign: No se encontró ningún video.")
+
+
+def should_download(yt_dlp_info):
+    filesize = 0
+    duration = 0
+
+    if yt_dlp_info.get('_type') == 'playlist':
+        for video in yt_dlp_info.get('entries'):
+            filesize += video.get('filesize') or 0
+            duration += video.get('duration') or 0
+
+    else:
+        filesize = yt_dlp_info.get('filesize')
+        duration = yt_dlp_info.get('duration')
+
+    return (filesize is not None and filesize < MAX_VIDEO_SIZE) or (duration is not None and duration < MAX_VIDEO_DURATION)
 
 
 @bot.command(pass_context=True, aliases=["d"])

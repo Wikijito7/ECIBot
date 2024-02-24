@@ -16,7 +16,7 @@ def clear_yt():
         os.remove(os.path.join(yt_base_url, file))
 
 
-def get_video_info(url):
+def extract_yt_dlp_info(url):
     try: 
         ydl_opts = {
             'outtmpl':f'{yt_base_url}%(title)s.%(ext)s',

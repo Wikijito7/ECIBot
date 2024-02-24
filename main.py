@@ -76,6 +76,12 @@ async def on_error(event, *args, **kwargs):
 
 @bot.event
 async def on_message(message):
+    await proccess_reactions(message)
+    await proccess_twitter_link(message)
+    await bot.process_commands(message)
+
+
+async def proccess_reactions(message):
     if message.author.id == 378213328570417154:
         emoji = "🍆"
         await message.add_reaction(emoji)
@@ -83,10 +89,10 @@ async def on_message(message):
     if message.author.id == 651163679814844467:
         emoji = "😢"
         await message.add_reaction(emoji)
+
     if message.author.id == 899918332965298176:
         emoji = "😭"
         await message.add_reaction(emoji)
-    await bot.process_commands(message)
     
     if "francia" in message.content.lower():
         emojies = ["🇫🇷", "🥖", "🥐", "🍷"]
@@ -102,6 +108,25 @@ async def on_message(message):
         emojies = ["🇲🇽", "🌯", "🌮", "🫔"]
         for emoji in emojies:
             await message.add_reaction(emoji)
+
+
+async def proccess_twitter_link(message):
+    if "!yt" in message.content.lower():
+        return
+    
+    if "https://x.com" in message.content.lower():
+        await send_fixed_up_twitter(message, "https://x")
+        return
+
+    if "https://twitter.com" in message.content.lower():
+        await send_fixed_up_twitter(message, "https://twitter")
+
+
+async def send_fixed_up_twitter(message, content):
+    fixed_tweet = message.content.lower().replace(content, "https://fixupx").split("?")[0]
+    await message.channel.send(f"Tweet enviado por {message.author.mention}, enlace arreglado:\n{fixed_tweet}")
+    await message.delete()
+
 
 @bot.event
 async def close():

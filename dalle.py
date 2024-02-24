@@ -37,7 +37,7 @@ def clear_dalle():
 
 def remove_image_from_memory(image_name):
     try:
-        os.remove(os.path.join(base_url, image_name))
+        os.remove(os.path.join(image_name))
 
     except Exception as e:
         print(f"remove_image_from_memory >> Error al intentar borrar la imagen {image_name}: {str(e)}")

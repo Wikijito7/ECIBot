@@ -73,7 +73,7 @@ def get_speed(text):
         return 1.3
     
     else:
-        return 1.4
+        return 1.45
 
 
 def flatten_list(list):

@@ -16,7 +16,7 @@ from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
 from datetime import datetime, time
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True, fetch_offline_members=True)
 bot.remove_command("help")
@@ -69,8 +69,6 @@ async def on_command_error(ctx, exception):
 
 @bot.event
 async def on_error(event, *args, **kwargs):
-    if channel_text.get_text_channel() is not None:
-        channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
     print(args)
 
 
@@ -83,9 +81,7 @@ async def on_message(message):
     if message.author.id == 651163679814844467:
         emoji = "😢"
         await message.add_reaction(emoji)
-    if message.author.id == 899918332965298176:
-        emoji = "😭"
-        await message.add_reaction(emoji)
+
     await bot.process_commands(message)
     
     if "francia" in message.content.lower():
@@ -93,31 +89,10 @@ async def on_message(message):
         for emoji in emojies:
             await message.add_reaction(emoji)
 
-    if "españa" in message.content.lower():
-        emojies = ["🆙", "🇪🇸", "❤️‍🔥", "💃", "🥘", "🏖️", "🛌", "🇪🇦"]
-        for emoji in emojies:
-            await message.add_reaction(emoji)
-
-    if "mexico" in message.content.lower():
-        emojies = ["🇲🇽", "🌯", "🌮", "🫔"]
-        for emoji in emojies:
-            await message.add_reaction(emoji)
 
 @bot.event
 async def close():
     print("Bot disconnected")
-
-
-@bot.command(pass_context=True, aliases=["c", "cl"])
-async def clear(ctx, arg):
-    if ctx.author.id != 277523565920911360:
-       await ctx.send(f"No tienes permisos, perro :dog:")
-       return
-
-    try:
-        await ctx.channel.purge(limit=(int(arg)+1))
-    except ValueError:
-        raise commands.CommandNotFound
 
 
 @bot.command(pass_context=True)
@@ -169,7 +144,7 @@ async def search(ctx, arg):
 async def play(ctx, *args):
     ch = None
 
-    if len(args) > 999:
+    if len(args) > 5:
         await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
         return
 
@@ -285,7 +260,7 @@ async def poll(ctx, *args):
 async def ask(ctx, *args):
     await ctx.send(":clock10: Generando respuesta.")
     response = generate_response(" ".join(args))
-    await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
+    await ctx.send(f":e_mail: Respuesta: ```{response}```")
     await tts(ctx, response)
 
 
@@ -296,15 +271,15 @@ async def youtube(ctx, args):
         await ctx.send(":clock10: Buscando en YouTube..")
         video_info = get_video_info(args)
         if video_info != None:
-            duration = int(video_info['filesize'])
-            if duration < MAX_VIDEO_SIZE:
+            duration = int(video_info['duration'])
+            if duration < MAX_VIDEO_DURATION:
                 await ctx.send(":clock10: Descargando vídeo..")
                 launch(lambda: get_youtube_dlp_video(args, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:
                     if len(channel.members) > 0 and ctx.author in channel.members:
                         voice_channel.set_voice_channel(channel)
                         break
-
+            
             else:
                 await ctx.send(":no_entry_sign: El video es muy largo.")
 
@@ -328,8 +303,8 @@ async def dalle(ctx, *args):
 def youtube_listener(e):
     if e['status'] == 'finished':
         file_extension = e['filename'].split(".")[-1]
-        original_file = e['filename']
-        filename = original_file.replace(yt_base_url, "").replace(f".{file_extension}", "")
+        original_file = e['filename'].replace(file_extension, "mp3")
+        filename = original_file.replace(yt_base_url, "").replace(".mp3", "")
         sound = Sound(filename, SoundType.YT, original_file)
         sound_queue.append(sound)
         youtube_event.set()
@@ -379,7 +354,6 @@ async def bot_vitals():
             print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola..")
             await clear_bot(None)
 
-
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
         traceback.print_exc()
@@ -398,7 +372,9 @@ async def kiwi():
             if eci_channel.guild == voice_client.guild:
                 play_sound = False
                 break
-
+        
+        play_sound = play_sound and bot.get_user(826784718589526057) not in eci_channel.members and bot.get_user(899918332965298176) not in eci_channel.members
+        
         if play_sound:
             try:
                 current_time = datetime.now().time().replace(second=0, microsecond=0)
@@ -445,6 +421,7 @@ async def dalle_vitals():
 
     else:
         dalle_vitals.stop()
+
 
 @tasks.loop(seconds=1)
 async def event_listener():

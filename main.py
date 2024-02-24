@@ -400,6 +400,18 @@ async def radio(ctx, arg):
         await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
+@bot.command(pass_context=True, aliases=["co"])
+async def confetti(ctx, arg: int = 1):
+    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
+    yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
+    if yt_dlp_info is not None:
+        songs = yt_dlp_info.get('entries')
+        if arg < len(songs):
+            songs = random.sample(yt_dlp_info.get('entries'), arg)
+        for song in songs:
+            await youtube(ctx, song.get('url'))
+
+
 def youtube_listener(e):
     if e['status'] == 'finished':
         file_extension = e['filename'].split(".")[-1]

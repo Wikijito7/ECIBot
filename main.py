@@ -114,11 +114,11 @@ async def proccess_twitter_link(message):
     if "!yt" in message.content.lower():
         return
     
-    if "https://x" in message.content.lower():
+    if "https://x.com" in message.content.lower():
         await send_fixed_up_twitter(message, "https://x")
         return
 
-    if "https://twitter" in message.content.lower():
+    if "https://twitter.com" in message.content.lower():
         await send_fixed_up_twitter(message, "https://twitter")
 
 

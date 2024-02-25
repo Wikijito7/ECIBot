@@ -65,13 +65,13 @@ async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
 
-    print(e)
+    print(exception)
 
 
 @bot.event
 async def on_error(event, *args, **kwargs):
     if channel_text.get_text_channel() is not None:
-        channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
+        await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
     print(args)
 
 

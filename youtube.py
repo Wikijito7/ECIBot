@@ -23,7 +23,6 @@ def yt_search_and_extract_yt_dlp_info(search_query):
             'format': DOWNLOAD_FORMATS,
             'extract_flat': True, # Don't try to obtain information from nested content (very slow in long playlists)
             'noplaylist': True, # Ensure playlists are discarded
-            'playlist_count': 1 # Only get one result
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(f"ytsearch:{search_query}", download=False).get('entries')[0] # Return first result

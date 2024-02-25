@@ -2,8 +2,9 @@ import yt_dlp
 import os
 
 yt_base_url = "./yt/"
-MAX_VIDEO_DURATION = 360 # in seconds, 6 minutes atm
-
+MAX_VIDEO_DURATION = 86400 # in seconds
+MAX_VIDEO_SIZE = 800 * 1024 * 1024 # in bytes
+DOWNLOAD_FORMATS = '251/250/249/http-950/m4a/worst'
 
 def check_base_dir():
     if not os.path.exists(yt_base_url):
@@ -16,17 +17,12 @@ def clear_yt():
         os.remove(os.path.join(yt_base_url, file))
 
 
-def get_video_info(url):
+def extract_yt_dlp_info(url):
     try: 
         ydl_opts = {
-            'outtmpl':f'{yt_base_url}%(title)s.%(ext)s',
             'extractaudio': True,
-            'format': 'worstaudio/140/17/36/22',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '92',
-            }],
+            'format': DOWNLOAD_FORMATS,
+            'extract_flat': True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(url, download=False)
@@ -40,12 +36,7 @@ def get_youtube_dlp_video(url, listener):
     ydl_opts = {
         'outtmpl':f'{yt_base_url}%(title)s.%(ext)s',
         'extractaudio': True,
-        'format': 'm4a/bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
+        'format': DOWNLOAD_FORMATS,
         'progress_hooks': [listener],
     }
 

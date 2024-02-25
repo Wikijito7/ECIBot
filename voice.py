@@ -44,14 +44,15 @@ class SoundType(Enum):
     YT = 1
     SOUND = 2
     KIWI = 3
+    STREAM = 4
 
 def generate_audio_path(name):
     return f"{audio_path()}/{name}.mp3"
 
 
-def get_audio(path):
-    if path_exists(path):
-        return discord.FFmpegPCMAudio(source=path)
+def get_audio(sound):
+    if sound.get_audio().startswith("http") or path_exists(sound.get_audio()):
+        return discord.FFmpegPCMAudio(source=sound.get_audio())
     
     else:
         return None
@@ -61,19 +62,13 @@ async def disconnect(client):
     await client.disconnect()
 
 
-async def play_sound(client, text, audio):
-    if audio != None:
-        client.play(source=get_audio(audio.get_audio()))
-        await text.send(f":notes: Reproduciendo `{audio.get_name()}` en `{client.channel.name}`.")
-
-
-async def play_sound_no_message(client, audio):
-    if audio != None:
-        client.play(source=get_audio(audio.get_audio()))
+async def play_sound(client, sound):
+    if sound is not None:
+        client.play(source=get_audio(sound))
 
 
 async def get_voice_client(voice_channel):
-    if voice_channel.get_voice_client() != None:
+    if voice_channel.get_voice_client() is not None:
         return voice_channel.get_voice_client()
 
     else:

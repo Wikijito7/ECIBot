@@ -9,7 +9,7 @@ from threading import Event
 from utils import *
 from voice import *
 from text import TextChannel
-from tts import generate_tts, clear_tts
+from tts import generate_tts, clear_tts, tts_base_url
 from gpt3 import *
 from youtube import *
 from bd import Database
@@ -17,7 +17,7 @@ from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
 from datetime import datetime, time
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True, fetch_offline_members=True)
 bot.remove_command("help")
@@ -72,11 +72,19 @@ async def on_command_error(ctx, exception):
 
 @bot.event
 async def on_error(event, *args, **kwargs):
+    if channel_text.get_text_channel() is not None:
+        channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
     print(args)
 
 
 @bot.event
 async def on_message(message):
+    await proccess_reactions(message)
+    await proccess_twitter_link(message)
+    await bot.process_commands(message)
+
+
+async def proccess_reactions(message):
     if message.author.id == 378213328570417154:
         emoji = "🍆"
         await message.add_reaction(emoji)
@@ -85,17 +93,59 @@ async def on_message(message):
         emoji = "😢"
         await message.add_reaction(emoji)
 
-    await bot.process_commands(message)
+    if message.author.id == 899918332965298176:
+        emoji = "😭"
+        await message.add_reaction(emoji)
     
     if "francia" in message.content.lower():
         emojies = ["🇫🇷", "🥖", "🥐", "🍷"]
         for emoji in emojies:
             await message.add_reaction(emoji)
 
+    if "españa" in message.content.lower():
+        emojies = ["🆙", "🇪🇸", "❤️‍🔥", "💃", "🥘", "🏖️", "🛌", "🇪🇦"]
+        for emoji in emojies:
+            await message.add_reaction(emoji)
+
+    if "mexico" in message.content.lower():
+        emojies = ["🇲🇽", "🌯", "🌮", "🫔"]
+        for emoji in emojies:
+            await message.add_reaction(emoji)
+
+
+async def proccess_twitter_link(message):
+    if "!yt" in message.content.lower():
+        return
+    
+    if "https://x.com" in message.content.lower():
+        await send_fixed_up_twitter(message, "https://x")
+        return
+
+    if "https://twitter.com" in message.content.lower():
+        await send_fixed_up_twitter(message, "https://twitter")
+
+
+async def send_fixed_up_twitter(message, content):
+    fixed_tweet = message.content.lower().replace(content, "https://fixupx").split("?")[0]
+    await message.channel.send(f"Tweet enviado por {message.author.mention}, enlace arreglado:\n{fixed_tweet}")
+    await message.delete()
+
 
 @bot.event
 async def close():
     print("Bot disconnected")
+
+
+@bot.command(pass_context=True, aliases=["c", "cl"])
+async def clear(ctx, arg):
+    if ctx.author.id != 277523565920911360:
+       await ctx.send(f"No tienes permisos, perro :dog:")
+       return
+
+    try:
+        await ctx.channel.purge(limit=(int(arg)+1))
+    except ValueError:
+        raise commands.CommandNotFound
 
 
 @bot.command(pass_context=True)
@@ -108,9 +158,11 @@ async def help(ctx):
     embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
-    embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado. Admite vídeos de menos de 6 minutos.", inline=False)
+    embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado.", inline=False)
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
+    embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
+    embedMsg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -147,7 +199,7 @@ async def search(ctx, arg):
 async def play(ctx, *args):
     ch = None
 
-    if len(args) > 5:
+    if len(args) > 999:
         await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
         return
 
@@ -171,8 +223,7 @@ async def play(ctx, *args):
             if path_exists(audio):
                 print("audio: ", audio)
                 sound = Sound(audio_name, SoundType.SOUND, audio)
-                print("voice_channel.get_voice_client() ", voice_channel.get_voice_client())
-                if voice_channel.get_voice_client() == None:
+                if voice_channel.get_voice_client() is None:
                     client = await ch.connect()
                     voice_channel.set_voice_client(client)
                     sound_queue.append(sound)
@@ -180,13 +231,8 @@ async def play(ctx, *args):
                     bot_vitals.start()
 
                 else:
-                    if sound not in sound_queue:
-                        await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
-                        sound_queue.append(sound)
-                        print("Sound queue: ", sound_queue)
-                    
-                    else:
-                        await ctx.send(f":robot: `{audio_name}` ya está en la cola.. (!queue).")
+                    await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
+                    sound_queue.append(sound)
 
             else: 
                 await ctx.send(f"`{audio_name}` no existe.. :frowning:")
@@ -270,31 +316,47 @@ async def poll(ctx, *args):
 @bot.command(pass_context=True, aliases=["a", "preguntar", "pr"])
 async def ask(ctx, *args):
     await ctx.send(":clock10: Generando respuesta.")
-    channel_text.set_text_channel(ctx.channel)
-    launch(generate_response(" ".join(args), ask_listener)) # .strip("\"").strip("\'")
+    response = generate_response(" ".join(args))
+    await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
+    await tts(ctx, response)
 
 
 @bot.command(pass_context=True, aliases=["yt"])
 async def youtube(ctx, args):
     if len(args) > 0:
         channel_text.set_text_channel(ctx.channel)
-        await ctx.send(":clock10: Buscando en YouTube..")
-        video_info = get_video_info(args)
-        if video_info != None:
-            duration = int(video_info['duration'])
-            if duration < MAX_VIDEO_DURATION:
+        await ctx.send(":clock10: Buscando con yt-dlp..")
+        yt_dlp_info = extract_yt_dlp_info(args)
+        if yt_dlp_info is not None:
+            if should_download(yt_dlp_info):
                 await ctx.send(":clock10: Descargando vídeo..")
                 launch(lambda: get_youtube_dlp_video(args, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:
                     if len(channel.members) > 0 and ctx.author in channel.members:
                         voice_channel.set_voice_channel(channel)
                         break
-            
+
             else:
-                await ctx.send(":no_entry_sign: El video es muy largo.")
+                await ctx.send(":no_entry_sign: El vídeo es muy largo o pesa mucho.")
 
         else:
             await ctx.send(":no_entry_sign: No se encontró ningún video.")
+
+
+def should_download(yt_dlp_info):
+    filesize = 0
+    duration = 0
+
+    if yt_dlp_info.get('_type') == 'playlist':
+        for video in yt_dlp_info.get('entries'):
+            filesize += video.get('filesize') or 0
+            duration += video.get('duration') or 0
+
+    else:
+        filesize = yt_dlp_info.get('filesize')
+        duration = yt_dlp_info.get('duration')
+
+    return (filesize is not None and filesize < MAX_VIDEO_SIZE) or (duration is not None and duration < MAX_VIDEO_DURATION)
 
 
 @bot.command(pass_context=True, aliases=["d"])
@@ -310,11 +372,61 @@ async def dalle(ctx, *args):
     launch(lambda: generate_images(text, dalle_listener))
 
 
+@bot.command(pass_context=True, aliases=["r"])
+async def radio(ctx, arg):
+    ch = None
+
+    stream_url = arg
+    stream_name = "stream de audio"
+
+    if arg.lower() == "lofi" or arg.lower() == "lo-fi":
+        stream_url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
+        stream_name = "Lofi 24/7"
+
+    if not stream_url.startswith("http"):
+        await ctx.send("La URL no parece correcta :confused:")
+        return
+
+    for channel in ctx.author.guild.voice_channels:
+        if len(channel.members) > 0 and ctx.author in channel.members:
+            ch = channel
+            break
+
+    if ch is not None:
+        channel_text.set_text_channel(ctx.channel)
+        sound = Sound(stream_name, SoundType.STREAM, stream_url)
+
+        if voice_channel.get_voice_client() is None:
+            client = await ch.connect()
+            voice_channel.set_voice_client(client)
+            sound_queue.append(sound)
+            bot_vitals.start()
+
+        else:
+            await ctx.send(f":radio: Añadido a la cola `{stream_name}`.")
+            sound_queue.append(sound)
+
+    else:
+        await ctx.send("No estás en ningún canal conectado.. :confused:")
+
+
+@bot.command(pass_context=True, aliases=["co"])
+async def confetti(ctx, arg: int = 1):
+    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
+    yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
+    if yt_dlp_info is not None:
+        songs = yt_dlp_info.get('entries')
+        if arg < len(songs):
+            songs = random.sample(yt_dlp_info.get('entries'), arg)
+        for song in songs:
+            await youtube(ctx, song.get('url'))
+
+
 def youtube_listener(e):
     if e['status'] == 'finished':
         file_extension = e['filename'].split(".")[-1]
-        original_file = e['filename'].replace(file_extension, "mp3")
-        filename = original_file.replace(yt_base_url, "").replace(".mp3", "")
+        original_file = e['filename']
+        filename = original_file.replace(yt_base_url, "").replace(f".{file_extension}", "")
         sound = Sound(filename, SoundType.YT, original_file)
         sound_queue.append(sound)
         youtube_event.set()
@@ -326,7 +438,7 @@ def dalle_listener(result):
 
 
 def tts_listener(original_file):
-    filename = original_file.replace(".mp3", "")
+    filename = original_file.replace(tts_base_url, "").replace(".mp3", "")
     sound = Sound(filename, SoundType.TTS, original_file)
     sound_queue.append(sound)
     youtube_event.set()
@@ -352,21 +464,24 @@ async def bot_vitals():
 
                 else:
                     sound = sound_queue[0]
-                    if sound.get_type_of_audio() == SoundType.KIWI:
-                        await play_sound_no_message(voice_client, sound)
 
                     if sound.get_type_of_audio() == SoundType.TTS:
-                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo tts en `{channel_text.get_text_channel().name}`.")
-                        await play_sound_no_message(voice_client, sound)
+                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{channel_text.get_text_channel().name}`.")
+
+                    elif sound.get_type_of_audio() == SoundType.STREAM:
+                        await channel_text.get_text_channel().send(f":radio: Reproduciendo `{sound.get_name()}` en `{channel_text.get_text_channel().name}`.")
 
                     else:
-                        await play_sound(voice_client, channel_text.get_text_channel(), sound)
+                        await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{channel_text.get_text_channel().name}`.")
+
+                    await play_sound(voice_client, sound)
                     sound_queue.pop(0)
             break
 
         else:
             print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola..")
             await clear_bot(None)
+
 
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
@@ -434,8 +549,8 @@ async def dalle_vitals():
         dalle_results_queue.remove(result)
 
     else:
+        clear_dalle()
         dalle_vitals.stop()
-
 
 @tasks.loop(seconds=1)
 async def event_listener():

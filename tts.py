@@ -10,24 +10,24 @@ from urllib.parse import quote
 from urllib.request import urlretrieve
 
 
-baseUrl = "./tts/"
+tts_base_url = "./tts/"
 
 
 def check_base_dir():
-    if not os.path.exists(baseUrl):
-        os.makedirs(baseUrl)
+    if not os.path.exists(tts_base_url):
+        os.makedirs(tts_base_url)
 
 
 def clear_tts():
     check_base_dir()
-    for file in os.listdir(baseUrl):
-        os.remove(os.path.join(baseUrl, file))
+    for file in os.listdir(tts_base_url):
+        os.remove(os.path.join(tts_base_url, file))
 
 
 def get_loquendo_tts(text):
     try:  
         url_encoded_text = quote(text)
-        file_name = f"{baseUrl}tts_{str(time.time())}.mp3"
+        file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
 
         text_to_hash = f"<engineID>2</engineID><voiceID>6</voiceID><langID>2</langID><ext>mp3</ext>{text}"
 
@@ -44,7 +44,7 @@ def get_loquendo_tts(text):
 
 def get_google_tts(text, speed):
         tts = gTTS(text=text, lang='es', tld='es')
-        file_name = f"{baseUrl}tts_{str(time.time())}.mp3"
+        file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
         check_base_dir()
         tts.save(file_name)
         file = change_speed(file_name, speed)
@@ -70,7 +70,7 @@ def generate_tts(text, speed, listener):
 
 def change_speed(file_name, speed):
     try:
-        new_file_name = f"{baseUrl}tts_{str(time.time())}.mp3"
+        new_file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
         ff = ffmpy.FFmpeg(inputs={file_name: None}, outputs={new_file_name: f"-filter:a atempo={speed}"})
         ff.run()
         return new_file_name

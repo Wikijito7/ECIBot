@@ -14,11 +14,25 @@ def get_bot_key():
         return claves["key"]
     
 
-def get_database_keys():
+def get_username_key():
     with open("./data/keys.json") as file:
         claves = json.loads(file.read())
 
-        return claves["key"]
+        return claves["db_username"]
+    
+
+def get_password_key():
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+
+        return claves["db_password"]
+
+
+def get_database_key():
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+
+        return claves["db_database"]
 
 
 def get_openai_key():

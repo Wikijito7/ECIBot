@@ -24,13 +24,11 @@ bot.remove_command("help")
 
 sound_queue = []
 dalle_results_queue = []
-ask_results_queue = []
 max_number = 10000
 kiwi_chance = 500
 youtube_event = Event()
 dalle_event = Event()
 tts_event = Event()
-ask_event = Event()
 
 
 @bot.event
@@ -212,22 +210,16 @@ async def play(ctx, *args):
             ch = channel
             break
 
-    print("canal voz ", ch)
-
     if ch != None:
         channel_text.set_text_channel(ctx.channel)
-        print("canal texto: ", ctx.channel)
         for audio_name in args:
-            print("nombre audio:", audio_name)
             audio = generate_audio_path(audio_name)
             if path_exists(audio):
-                print("audio: ", audio)
                 sound = Sound(audio_name, SoundType.SOUND, audio)
                 if voice_channel.get_voice_client() is None:
                     client = await ch.connect()
                     voice_channel.set_voice_client(client)
                     sound_queue.append(sound)
-                    print("Sound queue: ", sound_queue)
                     bot_vitals.start()
 
                 else:
@@ -443,11 +435,6 @@ def tts_listener(original_file):
     sound_queue.append(sound)
     youtube_event.set()
 
-def ask_listener(result):
-    ask_results_queue.append(result)
-    ask_event.set()
-
-
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
     if voice_channel.get_voice_client() == None and voice_channel.get_voice_channel() != None:
@@ -493,10 +480,9 @@ async def bot_vitals():
 async def kiwi():
     first_random = random.randrange(1, max_number)
     second_random = random.randrange(1, max_number)
-    # eci_channel = bot.get_channel(969557887305265184)
-    eci_channel = bot.get_channel(613077994394877976)
+    eci_channel = bot.get_channel(969557887305265184)
 
-    if eci_channel is not None and len(eci_channel.members) > 0:
+    if eci_channel is not None and len(eci_channel.members) > 1:
         play_sound = True
         for voice_client in bot.voice_clients:
             if eci_channel.guild == voice_client.guild:
@@ -514,7 +500,7 @@ async def kiwi():
                 elif (first_random == second_random):
                     sound_name = "a"
 
-                elif (abs(first_random - second_random) <= 5000):
+                elif (abs(first_random - second_random) <= kiwi_chance):
                     if first_random % 2 == 0:
                         sound_name = "kiwi"
 
@@ -523,8 +509,7 @@ async def kiwi():
 
                 if sound_name != None:
                     voice_client = await eci_channel.connect()
-                    # voice_channel.set_voice_channel(eci_channel)
-                    voice_channel.set_voice_client(voice_client)
+                    voice_channel.set_voice_channel(eci_channel)
                     sound = Sound(sound_name, SoundType.KIWI, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
                     sound_queue.append(sound)
@@ -569,18 +554,6 @@ async def event_listener():
         if not bot_vitals.is_running():
             bot_vitals.start()
 
-    # if ask_event.is_set() or len(ask_results_queue) > 0:
-    #    response = ask_results_queue[0]
-    #    ctx = channel_text.get_text_channel()
-    #    await ctx.send(f":e_mail: Respuesta: ```{response}```")
-    #    await tts(ctx, response)
-
-    #    if not bot_vitals.is_running():
-    #        bot_vitals.start()
-
-    #    ask_event.clear()
-        
-
 
 async def clear_bot(voice_client):
     try:
@@ -603,6 +576,6 @@ async def clear_bot(voice_client):
 if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = VoiceChannel()
-    db = Database()
+    database = Database(get_username_key(), get_password_key(), get_database_key())
     init(get_openai_key())
     bot.run(get_bot_key())

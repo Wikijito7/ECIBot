@@ -155,7 +155,7 @@ async def help(ctx):
     embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
-    embedMsg.add_field(name="!yt <enlace>", value="Reproduce el vídeo indicado.", inline=False)
+    embedMsg.add_field(name="!yt <url o búsqueda>", value="Reproduce el vídeo de la url indicada o lo busca en YouTube.", inline=False)
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
     embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
@@ -313,15 +313,18 @@ async def ask(ctx, *args):
 
 
 @bot.command(pass_context=True, aliases=["yt"])
-async def youtube(ctx, args):
+async def youtube(ctx, *args):
     if len(args) > 0:
+        input = " ".join(args)
         channel_text.set_text_channel(ctx.channel)
-        await ctx.send(":clock10: Buscando con yt-dlp..")
-        yt_dlp_info = extract_yt_dlp_info(args)
+        is_url = input.startswith("http://") or input.startswith("https://")
+        await ctx.send(":clock10: Obteniendo información..." if is_url else f":clock10: Buscando `{input}` en YouTube...")
+        yt_dlp_info = extract_yt_dlp_info(input) if is_url else yt_search_and_extract_yt_dlp_info(input)
         if yt_dlp_info is not None:
             if should_download(yt_dlp_info):
-                await ctx.send(":clock10: Descargando vídeo..")
-                launch(lambda: get_youtube_dlp_video(args, youtube_listener))
+                await ctx.send(f":clock10: Descargando `{yt_dlp_info.get('title')}`...")
+                url = input if is_url else yt_dlp_info.get('url')
+                launch(lambda: get_youtube_dlp_video(url, youtube_listener))
                 for channel in ctx.author.guild.voice_channels:
                     if len(channel.members) > 0 and ctx.author in channel.members:
                         voice_channel.set_voice_channel(channel)
@@ -453,13 +456,13 @@ async def bot_vitals():
                     sound = sound_queue[0]
 
                     if sound.get_type_of_audio() == SoundType.TTS:
-                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{channel_text.get_text_channel().name}`.")
+                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
 
                     elif sound.get_type_of_audio() == SoundType.STREAM:
-                        await channel_text.get_text_channel().send(f":radio: Reproduciendo `{sound.get_name()}` en `{channel_text.get_text_channel().name}`.")
+                        await channel_text.get_text_channel().send(f":radio: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
 
                     else:
-                        await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{channel_text.get_text_channel().name}`.")
+                        await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
 
                     await play_sound(voice_client, sound)
                     sound_queue.pop(0)

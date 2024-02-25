@@ -1,7 +1,7 @@
+import logging
 import random
 import traceback
 
-import discord
 from discord.ext import tasks
 from discord.ext import commands
 from threading import Event
@@ -65,7 +65,7 @@ async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
 
-    print(exception)
+    logging.error("on_command_error >> Exception caught when running command", exc_info=exception)
 
 
 @bot.event
@@ -426,9 +426,10 @@ async def bot_vitals():
                 else:
                     sound = sound_queue[0]
 
-                    if sound.get_type_of_audio() == SoundType.TTS:
+                    if sound.get_type_of_audio() == SoundType.FILE_SILENT:
+                        pass
+                    elif sound.get_type_of_audio() == SoundType.TTS:
                         await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
-
                     else:
                         await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
 
@@ -481,7 +482,7 @@ async def kiwi():
                 if sound_name != None:
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_channel)
-                    sound = Sound(sound_name, SoundType.FILE, generate_audio_path(sound_name))
+                    sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
                     sound_queue.append(sound)
                     bot_vitals.start()

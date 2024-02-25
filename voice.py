@@ -43,8 +43,9 @@ class Sound:
 
 class SoundType(Enum):
     FILE = 0
-    TTS = 1
-    URL = 2
+    FILE_SILENT = 1
+    TTS = 2
+    URL = 3
 
 def generate_audio_path(name):
     return f"{audio_path()}/{name}.mp3"

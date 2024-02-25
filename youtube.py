@@ -1,6 +1,7 @@
 import yt_dlp
 
 DOWNLOAD_FORMATS = '251/250/249/http-950/m4a/worst'
+yt_dlp_extractors = yt_dlp.extractor.gen_extractors()
 
 def extract_yt_dlp_info(url):
     try: 
@@ -32,8 +33,7 @@ def yt_search_and_extract_yt_dlp_info(search_query):
 
 
 def is_suitable_for_yt_dlp(url):
-    extractors = yt_dlp.extractor.gen_extractors()
-    for e in extractors:
-        if e.suitable(url) and e.IE_NAME != 'generic':
+    for extractor in yt_dlp_extractors:
+        if extractor.suitable(url) and extractor.IE_NAME != 'generic':
             return True
     return False

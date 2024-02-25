@@ -25,7 +25,7 @@ A custom Discord bot made in Python.
 
 ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot for the ECI Discord server. It's main features are:
 
-* Play music from YouTube.
+* Play music from different services thanks to yt-dlp.
 * Play customs sounds uploaded by the server members.
 * Play custom messages via tts.
 * Generate custom images using Dall-e mini API.
@@ -40,9 +40,11 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!tts <prompt>`: Generates a tts sound with the given message. Alternative command: !t, !say y !decir.
 * `!ask <prompt>`: Sends the prompt to OpenAI's API and generate a tts sound with the answer given. Alternative command: !a, !preguntar y !pr.
 * `!poll <prompt>`: Creates a yes or no poll message with the given prompt. Alternative command: !e y !encuesta.
-* `!yt <link>`: Plays the given youtube liunk on the voice channel if exists. Given video must be shorter than 6 minutes.
+* `!yt <link>`: Plays the given link on the voice channel if exists.
 * `!search <prompt>`: Search custom sounds that contains given prompt. Alternative command: !b y !buscar.
 * `!dalle <prompt>`: Generates 9 images in a 3 by 3 array by sending the given prompt to Dall-e mini API. It may take up to a minute to get the images from the API. Alternative command: !d.
+* `!radio <url or name>`: Plays an audio stream from given url or name. Alternative command: !r.
+* `!confetti <number>`: Plays the specified number of random Confetti songs. Alternative command: !co.
 
 ## TODO:
 * [ ] Add more commands.

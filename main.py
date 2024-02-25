@@ -159,6 +159,7 @@ async def help(ctx):
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
     embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
+    embedMsg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -398,6 +399,18 @@ async def radio(ctx, arg):
 
     else:
         await ctx.send("No estás en ningún canal conectado.. :confused:")
+
+
+@bot.command(pass_context=True, aliases=["co"])
+async def confetti(ctx, arg: int = 1):
+    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
+    yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
+    if yt_dlp_info is not None:
+        songs = yt_dlp_info.get('entries')
+        if arg < len(songs):
+            songs = random.sample(yt_dlp_info.get('entries'), arg)
+        for song in songs:
+            await youtube(ctx, song.get('url'))
 
 
 def youtube_listener(e):

@@ -41,6 +41,7 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!ask <prompt>`: Sends the prompt to OpenAI's API and generate a tts sound with the answer given. Alternative command: !a, !preguntar y !pr.
 * `!poll <prompt>`: Creates a yes or no poll message with the given prompt. Alternative command: !e y !encuesta.
 * `!yt <url or search query>`: Plays the given link on the voice channel if exists, or searches it on YouTube.
+* `!ytmusic <url or search query>`: Search YouTube Music and play the first result. You can use hashtags to specify the type of content. Alternative command: !ytm and !youtubemusic.
 * `!search <prompt>`: Search custom sounds that contains given prompt. Alternative command: !b y !buscar.
 * `!dalle <prompt>`: Generates 9 images in a 3 by 3 array by sending the given prompt to Dall-e mini API. It may take up to a minute to get the images from the API. Alternative command: !d.
 * `!radio <url or name>`: Plays an audio stream from given url or name. Alternative command: !r.

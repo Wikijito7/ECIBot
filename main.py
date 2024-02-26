@@ -59,11 +59,14 @@ async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CommandNotFound):
         await ctx.send("Oh.. No encuentro ese comando en mis registros. Prueba a escribir `!help`")
 
-    if isinstance(exception, commands.MissingRequiredArgument):
+    elif isinstance(exception, commands.MissingRequiredArgument):
         await ctx.send("Argumentos no validos. Revisa cómo la has liado, humano.")
 
-    if isinstance(exception, commands.CheckFailure):
+    elif isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
+
+    else:
+        await ctx.send(":face_with_diagonal_mouth: Ha ocurrido un error no especificado al ejecutar el comando.")
 
     logging.error("on_command_error >> Exception caught when running command", exc_info=exception)
 
@@ -112,7 +115,7 @@ async def proccess_reactions(message):
 
 
 async def proccess_twitter_link(message):
-    if "!yt" in message.content.lower():
+    if message.content.startswith("!") or message.author.id == bot.user.id:
         return
     
     if "https://x.com" in message.content.lower():
@@ -150,17 +153,16 @@ async def clear(ctx, arg):
 async def help(ctx):
     embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
     embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
-    embedMsg.add_field(name="!play <nombre sonido>", value="Reproduce el sonido con el nombre indicado. También funciona con !p.", inline=False)
+    embedMsg.add_field(name="!play <nombre o url>", value="Reproduce el sonido con ese nombre o la url indicada. Esta url puede ser directa o de los servicios que soporte yt-dlp, como YouTube o Twitter. También funciona con !p.", inline=False)
     embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s.", inline=False)
     embedMsg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola.", inline=False)
     embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
-    embedMsg.add_field(name="!yt <url o búsqueda>", value="Reproduce el vídeo de la url indicada o lo busca en YouTube.", inline=False)
+    embedMsg.add_field(name="!yt <búsqueda>", value="Busca en YouTube y reproduce el primer resultado. También funciona con !youtube", inline=False)
     embedMsg.add_field(name="!ytmusic <búsqueda>", value="Busca en YouTube Music y reproduce el primer resultado. Puedes usar hashtags para especificar el tipo de contenido: #albums, #artists, #community playlists, #featured playlists, #songs, #videos. También funciona con !ytm y !youtubemusic", inline=False)
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
-    embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
     embedMsg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
 
     await ctx.send(embed=embedMsg)
@@ -197,24 +199,19 @@ async def search(ctx, arg):
 @bot.command(pass_context=True, aliases=["p"])
 async def play(ctx, *args):
     if len(args) > 999:
-        await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
+        await ctx.send(":no_entry_sign: No puedes reproducir tantos sonidos a la vez.")
         return
 
     if len(args) == 0:
-        await ctx.send("Argumentos no validos. Revisa cómo la has liado, humano.")
+        await ctx.send("Argumentos no válidos. Revisa cómo la has liado, humano.")
         return
 
-    sounds = []
-    for audio_name in args:
-        audio = generate_audio_path(audio_name)
-        if path_exists(audio):
-            sound = Sound(audio_name, SoundType.FILE, audio)
-            sounds.append(sound)
-
-        else:
-            await ctx.send(f"`{audio_name}` no existe... :frowning:")
-
-    await add_to_queue(ctx, *sounds)
+    user_voice_channel = get_user_voice_channel(ctx)
+    if user_voice_channel is not None:
+        async for sound in generate_sounds(ctx, args):
+            await add_to_queue(ctx, user_voice_channel, sound)
+    else:
+        await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
 @bot.command(pass_context=True, aliases=["decir", "t", "say"])
@@ -299,36 +296,20 @@ async def ask(ctx, *args):
 
 @bot.command(pass_context=True, aliases=["yt"])
 async def youtube(ctx, *args):
-    if len(args) > 0:
-        input = " ".join(args)
-        channel_text.set_text_channel(ctx.channel)
-        is_url = input.startswith("http://") or input.startswith("https://")
-        await ctx.send(":clock10: Obteniendo información..." if is_url else f":clock10: Buscando `{input}` en YouTube...")
-        yt_dlp_info = extract_yt_dlp_info(input) if is_url else yt_search_and_extract_yt_dlp_info(input)
-        if yt_dlp_info is not None:
-            await add_all_found_content_to_queue(ctx, yt_dlp_info)
-        else:
-            await ctx.send(":no_entry_sign: No se encontró ningún vídeo.")
-
-
-async def add_all_found_content_to_queue(ctx, yt_dlp_info):
-    entries = yt_dlp_info.get('entries')
-    if entries: # This is a playlist or something similar
-        for entry in entries:
-            await add_url_to_queue(ctx, entry.get('url'), entry.get('title'))
+    user_voice_channel = get_user_voice_channel(ctx)
+    if user_voice_channel is not None:
+        if len(args) > 0:
+            input = " ".join(args)
+            channel_text.set_text_channel(ctx.channel)
+            await ctx.send(f":clock10: Buscando `{input}` en YouTube...")
+            yt_dlp_info = yt_search_and_extract_yt_dlp_info(input)
+            if yt_dlp_info is not None:
+                async for sound in generate_sounds_from_yt_dlp_info(yt_dlp_info):
+                    await add_to_queue(ctx, user_voice_channel, sound)
+            else:
+                await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
     else:
-        await add_url_to_queue(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title'))
-
-
-async def add_url_to_queue(ctx, url, name):
-    if url is None:
-        pass
-    elif is_suitable_for_yt_dlp(url):
-        yt_dlp_info = extract_yt_dlp_info(url)
-        await add_all_found_content_to_queue(ctx, yt_dlp_info)
-    else:
-        sound = Sound(name, SoundType.URL, url)
-        await add_to_queue(ctx, sound)
+        await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
 @bot.command(pass_context=True, aliases=["d"])
@@ -342,23 +323,6 @@ async def dalle(ctx, *args):
     channel_text.set_text_channel(ctx.channel)
     await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos..")
     launch(lambda: generate_images(text, dalle_listener))
-
-
-@bot.command(pass_context=True, aliases=["r"])
-async def radio(ctx, arg):
-    stream_url = arg
-    stream_name = "stream de audio"
-
-    if arg.lower() == "lofi" or arg.lower() == "lo-fi":
-        stream_url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
-        stream_name = "Lofi 24/7"
-
-    if not stream_url.startswith("http"):
-        await ctx.send("La URL no parece correcta :confused:")
-        return
-
-    sound = Sound(stream_name, SoundType.URL, stream_url)
-    await add_to_queue(ctx, sound)
 
 
 @bot.command(pass_context=True, aliases=["co"])
@@ -390,10 +354,55 @@ async def youtubemusic(ctx, *args):
         if result_url is not None:
             await youtube(ctx, result_url)
         else:
-            ctx.send(":no_entry_sign: No se encontró ningún vídeo.")
+            ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
 
 
-async def add_to_queue(ctx, *sounds):
+async def generate_sounds(ctx, args):
+    for arg in args:
+        if arg.lower() == "lofi" or arg.lower() == "lo-fi":
+            url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
+            name = "Lofi 24/7"
+            yield Sound(name, SoundType.URL, url)
+
+        elif arg.startswith("http://") or arg.startswith("https://"):
+            await ctx.send(":clock10: Obteniendo información de la URL...")
+            async for sound in generate_sounds_from_url(arg, None):
+                yield sound
+
+        else:
+            audio = generate_audio_path(arg)
+            if path_exists(audio):
+                sound = Sound(arg, SoundType.FILE, audio)
+                yield sound
+
+            else:
+                await ctx.send(f"`{arg}` no existe... :frowning:")
+
+
+async def generate_sounds_from_url(url, name):
+    if url is None:
+        pass
+    elif is_suitable_for_yt_dlp(url):
+        yt_dlp_info = extract_yt_dlp_info(url)
+        async for sound in generate_sounds_from_yt_dlp_info(yt_dlp_info):
+            yield sound
+    else:
+        sound = Sound(name or "stream de audio", SoundType.URL, url)
+        yield sound
+
+
+async def generate_sounds_from_yt_dlp_info(yt_dlp_info):
+    entries = yt_dlp_info.get('entries')
+    if entries: # This is a playlist or something similar
+        for entry in entries:
+            async for sound in generate_sounds_from_url(entry.get('url'), entry.get('title')):
+                yield sound
+    else:
+        async for sound in generate_sounds_from_url(yt_dlp_info.get('url'), yt_dlp_info.get('title')):
+            yield sound
+
+
+def get_user_voice_channel(ctx):
     ch = None
 
     for channel in ctx.author.guild.voice_channels:
@@ -401,21 +410,21 @@ async def add_to_queue(ctx, *sounds):
             ch = channel
             break
 
-    if ch is not None:
+    return ch
+
+
+async def add_to_queue(ctx, user_voice_channel, sound):
+    if user_voice_channel is not None:
         channel_text.set_text_channel(ctx.channel)
-        for sound in sounds:
-            if voice_channel.get_voice_client() is None:
-                client = await ch.connect()
-                voice_channel.set_voice_client(client)
-                sound_queue.append(sound)
-                bot_vitals.start()
+        if voice_channel.get_voice_client() is None:
+            client = await user_voice_channel.connect()
+            voice_channel.set_voice_client(client)
+            sound_queue.append(sound)
+            bot_vitals.start()
 
-            else:
-                await ctx.send(f":notes: Añadido a la cola `{sound.name}`.")
-                sound_queue.append(sound)
-
-    else:
-        await ctx.send("No estás en ningún canal conectado.. :confused:")
+        else:
+            await ctx.send(f":notes: Añadido a la cola `{sound.name}`.")
+            sound_queue.append(sound)
 
 
 def dalle_listener(result):

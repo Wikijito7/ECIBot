@@ -157,6 +157,7 @@ async def help(ctx):
     embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
     embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
     embedMsg.add_field(name="!yt <url o búsqueda>", value="Reproduce el vídeo de la url indicada o lo busca en YouTube.", inline=False)
+    embedMsg.add_field(name="!ytmusic <búsqueda>", value="Busca en YouTube Music y reproduce el primer resultado. Puedes usar hashtags para especificar el tipo de contenido: #albums, #artists, #community playlists, #featured playlists, #songs, #videos. También funciona con !ytm y !youtubemusic", inline=False)
     embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
     embedMsg.add_field(name="!radio <url o nombre>", value="Reproduce el stream de audio de la url o nombre indicados. También funciona con !r.", inline=False)
@@ -370,6 +371,26 @@ async def confetti(ctx, arg: int = 1):
             songs = random.sample(yt_dlp_info.get('entries'), arg)
         for song in songs:
             await youtube(ctx, song.get('url'))
+
+
+@bot.command(pass_context=True, aliases=["ytmusic", "ytm"])
+async def youtubemusic(ctx, *args):
+    if len(args) > 0:
+        input = " ".join(args)
+        channel_text.set_text_channel(ctx.channel)
+
+        if input.startswith("http://") or input.startswith("https://"):
+            await youtube(ctx, *args)
+            return
+
+        if "#" not in input:
+            input += "#songs"
+
+        result_url = yt_music_search_and_get_first_result_url(input)
+        if result_url is not None:
+            await youtube(ctx, result_url)
+        else:
+            ctx.send(":no_entry_sign: No se encontró ningún vídeo.")
 
 
 async def add_to_queue(ctx, *sounds):

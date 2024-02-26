@@ -1,7 +1,7 @@
+import logging
 import random
 import traceback
 
-import discord
 from discord.ext import tasks
 from discord.ext import commands
 from threading import Event
@@ -25,7 +25,6 @@ sound_queue = []
 dalle_results_queue = []
 max_number = 10000
 kiwi_chance = 500
-youtube_event = Event()
 dalle_event = Event()
 tts_event = Event()
 
@@ -45,7 +44,7 @@ async def on_ready():
     if sdos is not None:
         await sdos.me.edit(nick="Fran López")
     event_listener.start()
-    
+
 
 @bot.event
 async def on_guild_join(guild):
@@ -66,11 +65,13 @@ async def on_command_error(ctx, exception):
     if isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
 
+    logging.error("on_command_error >> Exception caught when running command", exc_info=exception)
+
 
 @bot.event
 async def on_error(event, *args, **kwargs):
     if channel_text.get_text_channel() is not None:
-        channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
+        await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
     print(args)
 
 
@@ -194,8 +195,6 @@ async def search(ctx, arg):
 
 @bot.command(pass_context=True, aliases=["p"])
 async def play(ctx, *args):
-    ch = None
-
     if len(args) > 999:
         await ctx.send(":no_entry_sign: No puedes reproducir más de 5 sonidos a la vez.") 
         return
@@ -204,33 +203,18 @@ async def play(ctx, *args):
         await ctx.send("Argumentos no validos. Revisa cómo la has liado, humano.")
         return
 
-    for channel in ctx.author.guild.voice_channels:
-        if len(channel.members) > 0 and ctx.author in channel.members:
-            ch = channel
-            break
+    sounds = []
+    for audio_name in args:
+        audio = generate_audio_path(audio_name)
+        if path_exists(audio):
+            sound = Sound(audio_name, SoundType.FILE, audio)
+            sounds.append(sound)
 
-    if ch != None:
-        channel_text.set_text_channel(ctx.channel)
-        for audio_name in args:
-            audio = generate_audio_path(audio_name)
-            if path_exists(audio):
-                sound = Sound(audio_name, SoundType.SOUND, audio)
-                if voice_channel.get_voice_client() is None:
-                    client = await ch.connect()
-                    voice_channel.set_voice_client(client)
-                    sound_queue.append(sound)
-                    bot_vitals.start()
+        else:
+            await ctx.send(f"`{audio_name}` no existe... :frowning:")
 
-                else:
-                    await ctx.send(f":notes: Añadido a la cola `{audio_name}`.")
-                    sound_queue.append(sound)
+    await add_to_queue(ctx, *sounds)
 
-            else: 
-                await ctx.send(f"`{audio_name}` no existe.. :frowning:")
-            
-    else:
-        await ctx.send("No estás en ningún canal conectado.. :confused:")
-    
 
 @bot.command(pass_context=True, aliases=["decir", "t", "say"])
 async def tts(ctx, *args):
@@ -321,36 +305,29 @@ async def youtube(ctx, *args):
         await ctx.send(":clock10: Obteniendo información..." if is_url else f":clock10: Buscando `{input}` en YouTube...")
         yt_dlp_info = extract_yt_dlp_info(input) if is_url else yt_search_and_extract_yt_dlp_info(input)
         if yt_dlp_info is not None:
-            if should_download(yt_dlp_info):
-                await ctx.send(f":clock10: Descargando `{yt_dlp_info.get('title')}`...")
-                url = input if is_url else yt_dlp_info.get('url')
-                launch(lambda: get_youtube_dlp_video(url, youtube_listener))
-                for channel in ctx.author.guild.voice_channels:
-                    if len(channel.members) > 0 and ctx.author in channel.members:
-                        voice_channel.set_voice_channel(channel)
-                        break
-
-            else:
-                await ctx.send(":no_entry_sign: El vídeo es muy largo o pesa mucho.")
-
+            await add_all_found_content_to_queue(ctx, yt_dlp_info)
         else:
-            await ctx.send(":no_entry_sign: No se encontró ningún video.")
+            await ctx.send(":no_entry_sign: No se encontró ningún vídeo.")
 
 
-def should_download(yt_dlp_info):
-    filesize = 0
-    duration = 0
-
-    if yt_dlp_info.get('_type') == 'playlist':
-        for video in yt_dlp_info.get('entries'):
-            filesize += video.get('filesize') or 0
-            duration += video.get('duration') or 0
-
+async def add_all_found_content_to_queue(ctx, yt_dlp_info):
+    entries = yt_dlp_info.get('entries')
+    if entries: # This is a playlist or something similar
+        for entry in entries:
+            await add_url_to_queue(ctx, entry.get('url'), entry.get('title'))
     else:
-        filesize = yt_dlp_info.get('filesize')
-        duration = yt_dlp_info.get('duration')
+        await add_url_to_queue(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title'))
 
-    return (filesize is not None and filesize < MAX_VIDEO_SIZE) or (duration is not None and duration < MAX_VIDEO_DURATION)
+
+async def add_url_to_queue(ctx, url, name):
+    if url is None:
+        pass
+    elif is_suitable_for_yt_dlp(url):
+        yt_dlp_info = extract_yt_dlp_info(url)
+        await add_all_found_content_to_queue(ctx, yt_dlp_info)
+    else:
+        sound = Sound(name, SoundType.URL, url)
+        await add_to_queue(ctx, sound)
 
 
 @bot.command(pass_context=True, aliases=["d"])
@@ -368,8 +345,6 @@ async def dalle(ctx, *args):
 
 @bot.command(pass_context=True, aliases=["r"])
 async def radio(ctx, arg):
-    ch = None
-
     stream_url = arg
     stream_name = "stream de audio"
 
@@ -381,27 +356,8 @@ async def radio(ctx, arg):
         await ctx.send("La URL no parece correcta :confused:")
         return
 
-    for channel in ctx.author.guild.voice_channels:
-        if len(channel.members) > 0 and ctx.author in channel.members:
-            ch = channel
-            break
-
-    if ch is not None:
-        channel_text.set_text_channel(ctx.channel)
-        sound = Sound(stream_name, SoundType.STREAM, stream_url)
-
-        if voice_channel.get_voice_client() is None:
-            client = await ch.connect()
-            voice_channel.set_voice_client(client)
-            sound_queue.append(sound)
-            bot_vitals.start()
-
-        else:
-            await ctx.send(f":radio: Añadido a la cola `{stream_name}`.")
-            sound_queue.append(sound)
-
-    else:
-        await ctx.send("No estás en ningún canal conectado.. :confused:")
+    sound = Sound(stream_name, SoundType.URL, stream_url)
+    await add_to_queue(ctx, sound)
 
 
 @bot.command(pass_context=True, aliases=["co"])
@@ -416,14 +372,29 @@ async def confetti(ctx, arg: int = 1):
             await youtube(ctx, song.get('url'))
 
 
-def youtube_listener(e):
-    if e['status'] == 'finished':
-        file_extension = e['filename'].split(".")[-1]
-        original_file = e['filename']
-        filename = original_file.replace(yt_base_url, "").replace(f".{file_extension}", "")
-        sound = Sound(filename, SoundType.YT, original_file)
-        sound_queue.append(sound)
-        youtube_event.set()
+async def add_to_queue(ctx, *sounds):
+    ch = None
+
+    for channel in ctx.author.guild.voice_channels:
+        if len(channel.members) > 0 and ctx.author in channel.members:
+            ch = channel
+            break
+
+    if ch is not None:
+        channel_text.set_text_channel(ctx.channel)
+        for sound in sounds:
+            if voice_channel.get_voice_client() is None:
+                client = await ch.connect()
+                voice_channel.set_voice_client(client)
+                sound_queue.append(sound)
+                bot_vitals.start()
+
+            else:
+                await ctx.send(f":notes: Añadido a la cola `{sound.name}`.")
+                sound_queue.append(sound)
+
+    else:
+        await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
 def dalle_listener(result):
@@ -435,7 +406,7 @@ def tts_listener(original_file):
     filename = original_file.replace(tts_base_url, "").replace(".mp3", "")
     sound = Sound(filename, SoundType.TTS, original_file)
     sound_queue.append(sound)
-    youtube_event.set()
+    tts_event.set()
 
 
 @tasks.loop(seconds=1, reconnect=True)
@@ -455,12 +426,10 @@ async def bot_vitals():
                 else:
                     sound = sound_queue[0]
 
-                    if sound.get_type_of_audio() == SoundType.TTS:
+                    if sound.get_type_of_audio() == SoundType.FILE_SILENT:
+                        pass
+                    elif sound.get_type_of_audio() == SoundType.TTS:
                         await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
-
-                    elif sound.get_type_of_audio() == SoundType.STREAM:
-                        await channel_text.get_text_channel().send(f":radio: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
-
                     else:
                         await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
 
@@ -513,7 +482,7 @@ async def kiwi():
                 if sound_name != None:
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_channel)
-                    sound = Sound(sound_name, SoundType.KIWI, generate_audio_path(sound_name))
+                    sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
                     sound_queue.append(sound)
                     bot_vitals.start()
@@ -540,13 +509,9 @@ async def dalle_vitals():
         clear_dalle()
         dalle_vitals.stop()
 
+
 @tasks.loop(seconds=1)
 async def event_listener():
-    if youtube_event.is_set():
-        youtube_event.clear()
-        if not bot_vitals.is_running():
-            bot_vitals.start()
-
     if dalle_event.is_set() or len(dalle_results_queue) > 0:
         dalle_event.clear()
         if not dalle_vitals.is_running():
@@ -573,7 +538,6 @@ async def clear_bot(voice_client):
     bot_vitals.stop()
     sound_queue.clear()
     clear_tts()
-    clear_yt()
 
 
 if __name__ == "__main__":

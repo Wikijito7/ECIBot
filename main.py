@@ -60,7 +60,7 @@ async def on_command_error(ctx, exception):
         await ctx.send("Oh.. No encuentro ese comando en mis registros. Prueba a escribir `!help`")
 
     elif isinstance(exception, commands.MissingRequiredArgument):
-        await ctx.send("Argumentos no validos. Revisa cómo la has liado, humano.")
+        await ctx.send("No has escrito nada... :confused:")
 
     elif isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
@@ -137,7 +137,7 @@ async def close():
     print("Bot disconnected")
 
 
-@bot.command(pass_context=True, aliases=["c", "cl"])
+@bot.command(aliases=["c", "cl"])
 async def clear(ctx, arg):
     if ctx.author.id != 277523565920911360:
        await ctx.send(f"No tienes permisos, perro :dog:")
@@ -149,7 +149,7 @@ async def clear(ctx, arg):
         raise commands.CommandNotFound
 
 
-@bot.command(pass_context=True)
+@bot.command
 async def help(ctx):
     embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
     embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
@@ -168,7 +168,7 @@ async def help(ctx):
     await ctx.send(embed=embedMsg)
 
 
-@bot.command(pass_context=True)
+@bot.command
 async def sonidos(ctx):
     blank_space = "\u2800"
     sounds_list = get_sounds_list()
@@ -180,7 +180,7 @@ async def sonidos(ctx):
     await ctx.send(embed=embedMsg)
 
 
-@bot.command(pass_context=True, aliases=["buscar", "b"])
+@bot.command(aliases=["buscar", "b"])
 async def search(ctx, arg):
     blank_space = "\u2800"
     sounds_list = get_sound_list_filtered(arg)
@@ -196,16 +196,8 @@ async def search(ctx, arg):
         await ctx.send(f":robot: No he encontrado ningún sonido que contenga `{arg}`.")
 
 
-@bot.command(pass_context=True, aliases=["p"])
+@bot.command(aliases=["p"], require_var_positional=True)
 async def play(ctx, *args):
-    if len(args) > 999:
-        await ctx.send(":no_entry_sign: No puedes reproducir tantos sonidos a la vez.")
-        return
-
-    if len(args) == 0:
-        await ctx.send("Argumentos no válidos. Revisa cómo la has liado, humano.")
-        return
-
     user_voice_channel = get_user_voice_channel(ctx)
     if user_voice_channel is not None:
         async for sound in generate_sounds(ctx, args):
@@ -214,12 +206,11 @@ async def play(ctx, *args):
         await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
-@bot.command(pass_context=True, aliases=["decir", "t", "say"])
-async def tts(ctx, *args):
-    text = " ".join(args)
+@bot.command(aliases=["decir", "t", "say"])
+async def tts(ctx, arg):
     ch = None
 
-    if not text.strip():
+    if not arg.strip():
         await ctx.send("No has escrito nada.. :confused:")
         return
 
@@ -228,15 +219,15 @@ async def tts(ctx, *args):
             ch = channel
             break
 
-    if ch != None:
+    if ch is not None:
         channel_text.set_text_channel(ctx.channel)
         voice_channel.set_voice_channel(ch)
 
     await ctx.send(":tools::snail: Generando mensaje tts..")
-    launch(lambda: generate_tts(text, get_speed(text), tts_listener))        
+    launch(lambda: generate_tts(arg, get_speed(arg), tts_listener))
 
 
-@bot.command(pass_context=True, aliases=["q", "cola"])
+@bot.command(aliases=["q", "cola"])
 async def queue(ctx):
     embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
 
@@ -258,7 +249,7 @@ async def jail(ctx):
     pass
 
 
-@bot.command(pass_context=True, aliases=["s"])
+@bot.command(aliases=["s"])
 async def stop(ctx):
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild and voice_client.is_playing():
@@ -267,7 +258,7 @@ async def stop(ctx):
             break
 
 
-@bot.command(pass_context=True, aliases=["dc"])
+@bot.command(aliases=["dc"])
 async def disconnect(ctx):
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild:
@@ -276,56 +267,47 @@ async def disconnect(ctx):
             break
 
 
-@bot.command(pass_context=True, aliases=["e", "encuesta"])
-async def poll(ctx, *args):
-    if len(args) > 0:
-        embedMsg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
-        embedMsg.add_field(name="Pregunta", value=" ".join(args), inline=False)
-        message = await ctx.send(embed=embedMsg)
-        await message.add_reaction("👍")
-        await message.add_reaction("👎")
+@bot.command(aliases=["e", "encuesta"])
+async def poll(ctx, arg):
+    embedMsg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
+    embedMsg.add_field(name="Pregunta", value=arg, inline=False)
+    message = await ctx.send(embed=embedMsg)
+    await message.add_reaction("👍")
+    await message.add_reaction("👎")
 
 
-@bot.command(pass_context=True, aliases=["a", "preguntar", "pr"])
-async def ask(ctx, *args):
+@bot.command(aliases=["a", "preguntar", "pr"])
+async def ask(ctx, arg):
     await ctx.send(":clock10: Generando respuesta.")
-    response = generate_response(" ".join(args))
+    response = generate_response(arg)
     await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
     await tts(ctx, response)
 
 
-@bot.command(pass_context=True, aliases=["yt"])
-async def youtube(ctx, *args):
+@bot.command(aliases=["yt"])
+async def youtube(ctx, arg):
     user_voice_channel = get_user_voice_channel(ctx)
     if user_voice_channel is not None:
-        if len(args) > 0:
-            input = " ".join(args)
-            channel_text.set_text_channel(ctx.channel)
-            await ctx.send(f":clock10: Buscando `{input}` en YouTube...")
-            yt_dlp_info = yt_search_and_extract_yt_dlp_info(input)
-            if yt_dlp_info is not None:
-                async for sound in generate_sounds_from_yt_dlp_info(yt_dlp_info):
-                    await add_to_queue(ctx, user_voice_channel, sound)
-            else:
-                await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
+        channel_text.set_text_channel(ctx.channel)
+        await ctx.send(f":clock10: Buscando `{arg}` en YouTube...")
+        yt_dlp_info = yt_search_and_extract_yt_dlp_info(arg)
+        if yt_dlp_info is not None:
+            async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
+                await add_to_queue(ctx, user_voice_channel, sound)
+        else:
+            await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
     else:
         await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
-@bot.command(pass_context=True, aliases=["d"])
-async def dalle(ctx, *args):
-    text = " ".join(args)
-
-    if not text.strip():
-        await ctx.send("No has escrito nada.. :confused:")
-        return
-
+@bot.command(aliases=["d"])
+async def dalle(ctx, arg):
     channel_text.set_text_channel(ctx.channel)
     await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos..")
-    launch(lambda: generate_images(text, dalle_listener))
+    launch(lambda: generate_images(arg, dalle_listener))
 
 
-@bot.command(pass_context=True, aliases=["co"])
+@bot.command(aliases=["co"])
 async def confetti(ctx, arg: int = 1):
     await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
     yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
@@ -337,24 +319,22 @@ async def confetti(ctx, arg: int = 1):
             await youtube(ctx, song.get('url'))
 
 
-@bot.command(pass_context=True, aliases=["ytmusic", "ytm"])
-async def youtubemusic(ctx, *args):
-    if len(args) > 0:
-        input = " ".join(args)
-        channel_text.set_text_channel(ctx.channel)
+@bot.command(aliases=["ytmusic", "ytm"])
+async def youtubemusic(ctx, arg):
+    channel_text.set_text_channel(ctx.channel)
 
-        if input.startswith("http://") or input.startswith("https://"):
-            await youtube(ctx, *args)
-            return
+    if arg.startswith("http://") or arg.startswith("https://"):
+        await youtube(ctx, arg)
+        return
 
-        if "#" not in input:
-            input += "#songs"
+    if "#" not in arg:
+        arg += "#songs"
 
-        result_url = yt_music_search_and_get_first_result_url(input)
-        if result_url is not None:
-            await youtube(ctx, result_url)
-        else:
-            ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
+    result_url = yt_music_search_and_get_first_result_url(arg)
+    if result_url is not None:
+        await youtube(ctx, result_url)
+    else:
+        ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
 
 
 async def generate_sounds(ctx, args):
@@ -366,7 +346,7 @@ async def generate_sounds(ctx, args):
 
         elif arg.startswith("http://") or arg.startswith("https://"):
             await ctx.send(":clock10: Obteniendo información de la URL...")
-            async for sound in generate_sounds_from_url(arg, None):
+            async for sound in generate_sounds_from_url(ctx, arg, None):
                 yield sound
 
         else:
@@ -379,26 +359,30 @@ async def generate_sounds(ctx, args):
                 await ctx.send(f"`{arg}` no existe... :frowning:")
 
 
-async def generate_sounds_from_url(url, name):
+async def generate_sounds_from_url(ctx, url, name):
     if url is None:
         pass
     elif is_suitable_for_yt_dlp(url):
         yt_dlp_info = extract_yt_dlp_info(url)
-        async for sound in generate_sounds_from_yt_dlp_info(yt_dlp_info):
+        async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
             yield sound
     else:
         sound = Sound(name or "stream de audio", SoundType.URL, url)
         yield sound
 
 
-async def generate_sounds_from_yt_dlp_info(yt_dlp_info):
+async def generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
+    if yt_dlp_info is None:
+        return
     entries = yt_dlp_info.get('entries')
     if entries: # This is a playlist or something similar
-        for entry in entries:
-            async for sound in generate_sounds_from_url(entry.get('url'), entry.get('title')):
+        if len(entries) > 30:
+            await ctx.send(":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
+        for entry in entries[:30]:
+            async for sound in generate_sounds_from_url(ctx, entry.get('url'), entry.get('title')):
                 yield sound
     else:
-        async for sound in generate_sounds_from_url(yt_dlp_info.get('url'), yt_dlp_info.get('title')):
+        async for sound in generate_sounds_from_url(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
             yield sound
 
 
@@ -496,20 +480,20 @@ async def kiwi():
                 current_time = datetime.now().time().replace(second=0, microsecond=0)
                 sound_name = None
 
-                if (current_time == time(12, 6)):
+                if current_time == time(12, 6):
                     sound_name = "1206"
 
-                elif (first_random == second_random):
+                elif first_random == second_random:
                     sound_name = "a"
 
-                elif (abs(first_random - second_random) <= kiwi_chance):
+                elif abs(first_random - second_random) <= kiwi_chance:
                     if first_random % 2 == 0:
                         sound_name = "kiwi"
 
                     else:
                         sound_name = "ohvaya"
 
-                if sound_name != None:
+                if sound_name is not None:
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_channel)
                     sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
@@ -518,7 +502,7 @@ async def kiwi():
                     bot_vitals.start()
 
             except discord.errors.ClientException as exc:
-                print(">> Exception captured.. Something happened at kiwi()")
+                logging.error(">> Exception captured.. Something happened at kiwi()", exc_info=exc)
 
 
 @tasks.loop(seconds=1)

@@ -138,7 +138,7 @@ async def close():
 
 
 @bot.command(aliases=["c", "cl"])
-async def clear(ctx, arg):
+async def clear(ctx, arg: int = 1):
     if ctx.author.id != 277523565920911360:
        await ctx.send(f"No tienes permisos, perro :dog:")
        return
@@ -206,13 +206,11 @@ async def play(ctx, *args):
         await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
-@bot.command(aliases=["decir", "t", "say"])
-async def tts(ctx, arg):
-    ch = None
+@bot.command(aliases=["decir", "t", "say"], require_var_positional=True)
+async def tts(ctx, *args):
+    text = " ".join(args)
 
-    if not arg.strip():
-        await ctx.send("No has escrito nada.. :confused:")
-        return
+    ch = None
 
     for channel in ctx.author.guild.voice_channels:
         if len(channel.members) > 0 and ctx.author in channel.members:
@@ -224,7 +222,7 @@ async def tts(ctx, arg):
         voice_channel.set_voice_channel(ch)
 
     await ctx.send(":tools::snail: Generando mensaje tts..")
-    launch(lambda: generate_tts(arg, get_speed(arg), tts_listener))
+    launch(lambda: generate_tts(text, get_speed(text), tts_listener))
 
 
 @bot.command(aliases=["q", "cola"])
@@ -267,30 +265,33 @@ async def disconnect(ctx):
             break
 
 
-@bot.command(aliases=["e", "encuesta"])
-async def poll(ctx, arg):
+@bot.command(aliases=["e", "encuesta"], require_var_positional=True)
+async def poll(ctx, *args):
+    question = " ".join(args)
     embedMsg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
-    embedMsg.add_field(name="Pregunta", value=arg, inline=False)
+    embedMsg.add_field(name="Pregunta", value=question, inline=False)
     message = await ctx.send(embed=embedMsg)
     await message.add_reaction("👍")
     await message.add_reaction("👎")
 
 
 @bot.command(aliases=["a", "preguntar", "pr"])
-async def ask(ctx, arg = ""):
+async def ask(ctx, *args):
+    text = " ".join(args)
     await ctx.send(":clock10: Generando respuesta.")
-    response = generate_response(arg)
+    response = generate_response(text)
     await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
     await tts(ctx, response)
 
 
-@bot.command(aliases=["yt"])
-async def youtube(ctx, arg):
+@bot.command(aliases=["yt"], require_var_positional=True)
+async def youtube(ctx, *args):
+    search_query = " ".join(args)
     user_voice_channel = get_user_voice_channel(ctx)
     if user_voice_channel is not None:
         channel_text.set_text_channel(ctx.channel)
-        await ctx.send(f":clock10: Buscando `{arg}` en YouTube...")
-        yt_dlp_info = yt_search_and_extract_yt_dlp_info(arg)
+        await ctx.send(f":clock10: Buscando `{search_query}` en YouTube...")
+        yt_dlp_info = yt_search_and_extract_yt_dlp_info(search_query)
         if yt_dlp_info is not None:
             async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
                 await add_to_queue(ctx, user_voice_channel, sound)
@@ -300,11 +301,12 @@ async def youtube(ctx, arg):
         await ctx.send("No estás en ningún canal conectado.. :confused:")
 
 
-@bot.command(aliases=["d"])
-async def dalle(ctx, arg):
+@bot.command(aliases=["d"], require_var_positional=True)
+async def dalle(ctx, *args):
+    text = " ".join(args)
     channel_text.set_text_channel(ctx.channel)
     await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos..")
-    launch(lambda: generate_images(arg, dalle_listener))
+    launch(lambda: generate_images(text, dalle_listener))
 
 
 @bot.command(aliases=["co"])
@@ -319,18 +321,14 @@ async def confetti(ctx, arg: int = 1):
             await youtube(ctx, song.get('url'))
 
 
-@bot.command(aliases=["ytmusic", "ytm"])
-async def youtubemusic(ctx, arg):
-    channel_text.set_text_channel(ctx.channel)
+@bot.command(aliases=["ytmusic", "ytm"], require_var_positional=True)
+async def youtubemusic(ctx, *args):
+    search_query = " ".join(args)
 
-    if arg.startswith("http://") or arg.startswith("https://"):
-        await youtube(ctx, arg)
-        return
+    if "#" not in search_query:
+        search_query += "#songs"
 
-    if "#" not in arg:
-        arg += "#songs"
-
-    result_url = yt_music_search_and_get_first_result_url(arg)
+    result_url = yt_music_search_and_get_first_result_url(search_query)
     if result_url is not None:
         await youtube(ctx, result_url)
     else:

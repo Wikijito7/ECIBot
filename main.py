@@ -277,7 +277,7 @@ async def poll(ctx, arg):
 
 
 @bot.command(aliases=["a", "preguntar", "pr"])
-async def ask(ctx, arg):
+async def ask(ctx, arg = ""):
     await ctx.send(":clock10: Generando respuesta.")
     response = generate_response(arg)
     await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")

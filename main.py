@@ -318,7 +318,7 @@ async def confetti(ctx, arg: int = 1):
         if arg < len(songs):
             songs = random.sample(yt_dlp_info.get('entries'), arg)
         for song in songs:
-            await youtube(ctx, song.get('url'))
+            await play(ctx, song.get('url'))
 
 
 @bot.command(aliases=["ytmusic", "ytm"], require_var_positional=True)
@@ -385,14 +385,13 @@ async def generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
 
 
 def get_user_voice_channel(ctx):
-    ch = None
-
-    for channel in ctx.author.guild.voice_channels:
-        if len(channel.members) > 0 and ctx.author in channel.members:
-            ch = channel
-            break
-
-    return ch
+    try:
+        voice_state = ctx.message.author.voice
+        return voice_state.channel if voice_state is not None else None
+    except:
+        print("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
+        traceback.print_exc()
+        return None
 
 
 async def add_to_queue(ctx, user_voice_channel, sound):

@@ -12,6 +12,7 @@ from text import TextChannel
 from tts import generate_tts, clear_tts, tts_base_url
 from gpt3 import *
 from youtube import *
+from bd import Database
 from threads import launch
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
 from datetime import datetime, time
@@ -60,7 +61,7 @@ async def on_command_error(ctx, exception):
         await ctx.send("Oh.. No encuentro ese comando en mis registros. Prueba a escribir `!help`")
 
     elif isinstance(exception, commands.MissingRequiredArgument):
-        await ctx.send("No has escrito nada... :confused:")
+        await ctx.send("No has escrito nada. :confused:")
 
     elif isinstance(exception, commands.CheckFailure):
         await ctx.send("Lo siento, no hablo con mortales sin permisos.")
@@ -145,11 +146,12 @@ async def clear(ctx, arg: int = 1):
 
     try:
         await ctx.channel.purge(limit=(int(arg)+1))
+
     except ValueError:
         raise commands.CommandNotFound
 
 
-@bot.command
+@bot.command(alias="help")
 async def help(ctx):
     embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
     embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
@@ -168,11 +170,11 @@ async def help(ctx):
     await ctx.send(embed=embedMsg)
 
 
-@bot.command
+@bot.command(alias="sonidos")
 async def sonidos(ctx):
     blank_space = "\u2800"
     sounds_list = get_sounds_list()
-
+    database.register_user_interaction(ctx.author.name, "sonidos")
     embedMsg = discord.Embed(title="Lista de sonidos", description=f"Actualmente hay {len(get_sounds())} sonidos.", color=0x01B05B)
     for sound_block in sounds_list:
         embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
@@ -184,6 +186,7 @@ async def sonidos(ctx):
 async def search(ctx, arg):
     blank_space = "\u2800"
     sounds_list = get_sound_list_filtered(arg)
+    database.register_user_interaction(ctx.author.name, "buscar")
     if len(sounds_list[0]) > 0:
         embedMsg = discord.Embed(title="Lista de sonidos", description=f"Sonidos que contienen `{arg}` en su nombre", color=0x01B05B)
         for sound_block in sounds_list:
@@ -209,8 +212,8 @@ async def play(ctx, *args):
 @bot.command(aliases=["decir", "t", "say"], require_var_positional=True)
 async def tts(ctx, *args):
     text = " ".join(args)
-
     ch = None
+    database.register_user_interaction(ctx.author.name, "tts")
 
     for channel in ctx.author.guild.voice_channels:
         if len(channel.members) > 0 and ctx.author in channel.members:
@@ -228,6 +231,7 @@ async def tts(ctx, *args):
 @bot.command(aliases=["q", "cola"])
 async def queue(ctx):
     embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
+    database.register_user_interaction(ctx.author.name, "queue")
 
     if len(sound_queue) > 0:
         sounds = map(lambda sound: sound.get_name(), sound_queue)
@@ -236,21 +240,11 @@ async def queue(ctx):
     await ctx.send(embed=embedMsg)
 
 
-async def jail(ctx):
-    # TODO: Quitar todos los roles a un usuario
-    # TODO: Dar rol configurado
-    # TODO: Mover usuario al canal configurado
-    await ctx.send("Test")
-    role = discord.utils.get(ctx.guild.roles, name="DJ")
-    print(f"buscando el role \"DJ\": {role}")
-    await bot.add_roles(ctx.author, role)
-    pass
-
-
 @bot.command(aliases=["s"])
 async def stop(ctx):
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild and voice_client.is_playing():
+            database.register_user_interaction(ctx.author.name, "stop")
             voice_client.stop()
             await ctx.send(":stop_button: Sonido parado.")
             break
@@ -260,6 +254,7 @@ async def stop(ctx):
 async def disconnect(ctx):
     for voice_client in bot.voice_clients:
         if voice_client.guild == ctx.guild:
+            database.register_user_interaction(ctx.author.name, "disconnect")
             await clear_bot(voice_client)
             await ctx.send(":robot: Desconectando..")
             break
@@ -271,6 +266,7 @@ async def poll(ctx, *args):
     embedMsg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
     embedMsg.add_field(name="Pregunta", value=question, inline=False)
     message = await ctx.send(embed=embedMsg)
+    database.register_user_interaction(ctx.author.name, "poll")
     await message.add_reaction("👍")
     await message.add_reaction("👎")
 
@@ -278,6 +274,7 @@ async def poll(ctx, *args):
 @bot.command(aliases=["a", "preguntar", "pr"])
 async def ask(ctx, *args):
     text = " ".join(args)
+    database.register_user_interaction(ctx.author.name, "ask")
     await ctx.send(":clock10: Generando respuesta.")
     response = generate_response(text)
     await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
@@ -288,9 +285,10 @@ async def ask(ctx, *args):
 async def youtube(ctx, *args):
     search_query = " ".join(args)
     user_voice_channel = get_user_voice_channel(ctx)
+    database.register_user_interaction(ctx.author.name, "youtube")
     if user_voice_channel is not None:
         channel_text.set_text_channel(ctx.channel)
-        await ctx.send(f":clock10: Buscando `{search_query}` en YouTube...")
+        await ctx.send(f":clock10: Buscando `{search_query}` en YouTube.")
         yt_dlp_info = yt_search_and_extract_yt_dlp_info(search_query)
         if yt_dlp_info is not None:
             async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
@@ -304,6 +302,7 @@ async def youtube(ctx, *args):
 @bot.command(aliases=["d"], require_var_positional=True)
 async def dalle(ctx, *args):
     text = " ".join(args)
+    database.register_user_interaction(ctx.author.name, "dalle")
     channel_text.set_text_channel(ctx.channel)
     await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos..")
     launch(lambda: generate_images(text, dalle_listener))
@@ -311,7 +310,8 @@ async def dalle(ctx, *args):
 
 @bot.command(aliases=["co"])
 async def confetti(ctx, arg: int = 1):
-    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
+    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo.")
+    database.register_user_interaction(ctx.author.name, "confetti")
     yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
     if yt_dlp_info is not None:
         songs = yt_dlp_info.get('entries')
@@ -324,6 +324,7 @@ async def confetti(ctx, arg: int = 1):
 @bot.command(aliases=["ytmusic", "ytm"], require_var_positional=True)
 async def youtubemusic(ctx, *args):
     search_query = " ".join(args)
+    database.register_user_interaction(ctx.author.name, "ytmusic")
 
     if "#" not in search_query:
         search_query += "#songs"
@@ -338,23 +339,26 @@ async def youtubemusic(ctx, *args):
 async def generate_sounds(ctx, args):
     for arg in args:
         if arg.lower() == "lofi" or arg.lower() == "lo-fi":
+            database.register_user_interaction(ctx.author.name, "play")
             url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
             name = "Lofi 24/7"
             yield Sound(name, SoundType.URL, url)
 
         elif arg.startswith("http://") or arg.startswith("https://"):
-            await ctx.send(":clock10: Obteniendo información de la URL...")
+            await ctx.send(":clock10: Obteniendo información de la URL.")
+            database.register_user_interaction(ctx.author.name, "play")
             async for sound in generate_sounds_from_url(ctx, arg, None):
                 yield sound
 
         else:
             audio = generate_audio_path(arg)
             if path_exists(audio):
+                database.register_user_interaction(ctx.author.name, "play", arg)
                 sound = Sound(arg, SoundType.FILE, audio)
                 yield sound
 
             else:
-                await ctx.send(f"`{arg}` no existe... :frowning:")
+                await ctx.send(f"`{arg}` no existe. :frowning:")
 
 
 async def generate_sounds_from_url(ctx, url, name):
@@ -490,6 +494,8 @@ async def kiwi():
                     else:
                         sound_name = "ohvaya"
 
+                database.register_user_interaction("kiwi", "kiwi", sound_name)
+
                 if sound_name is not None:
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_channel)
@@ -554,5 +560,6 @@ async def clear_bot(voice_client):
 if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = VoiceChannel()
+    database = Database(get_username_key(), get_password_key(), get_database_key())
     init(get_openai_key())
     bot.run(get_bot_key())

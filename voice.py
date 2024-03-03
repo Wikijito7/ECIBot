@@ -1,6 +1,8 @@
 import discord
-from utils import path_exists, audio_path
+from utils import audio_path
 from enum import Enum
+
+FFMPEG_OPTIONS_FOR_REMOTE_URL = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
 class VoiceChannel:
     def __init__(self):
@@ -40,22 +42,20 @@ class Sound:
 
 
 class SoundType(Enum):
-    TTS = 0
-    YT = 1
-    SOUND = 2
-    KIWI = 3
-    STREAM = 4
+    FILE = 0
+    FILE_SILENT = 1
+    TTS = 2
+    URL = 3
 
 def generate_audio_path(name):
     return f"{audio_path()}/{name}.mp3"
 
 
 def get_audio(sound):
-    if sound.get_audio().startswith("http") or path_exists(sound.get_audio()):
-        return discord.FFmpegPCMAudio(source=sound.get_audio())
-    
+    if sound.get_type_of_audio() == SoundType.URL:
+        return discord.FFmpegPCMAudio(sound.get_audio(), **FFMPEG_OPTIONS_FOR_REMOTE_URL)
     else:
-        return None
+        return discord.FFmpegPCMAudio(sound.get_audio())
 
 
 async def disconnect(client):

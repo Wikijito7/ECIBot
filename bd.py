@@ -23,10 +23,6 @@ class Database:
 
     def get_stats_collection(self):
         return self.stats_collection
-    
-
-    def register_user_interaction_async(self, username: str, command: str, sound: Optional[str] = None) -> None:
-        launch(lambda: register_user_interaction(username, command, sound))
 
 
     def register_user_interaction(self, username: str, command: str, sound: Optional[str] = None) -> None:

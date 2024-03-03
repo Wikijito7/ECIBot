@@ -1,5 +1,9 @@
 {
     "key": "your-discord-key",
     "openai_key":"your-openai-key",
-    "debug": false
+    "debug": false,
+    "db_enabled": false,
+    "db_username": "db_username",
+    "db_password": "db_password",
+    "db_database": "db_database"
 }

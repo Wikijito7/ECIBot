@@ -35,6 +35,12 @@ def get_database_key():
         return claves["db_database"]
 
 
+def is_database_enabled():
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+
+        return claves["db_enabled"]
+
 def get_openai_key():
     with open("./data/keys.json") as file:
         claves = json.loads(file.read())

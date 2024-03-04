@@ -98,7 +98,7 @@ async def proccess_reactions(message):
     if message.author.id == 899918332965298176:
         emoji = "😭"
         await message.add_reaction(emoji)
-    
+
     if "francia" in message.content.lower():
         emojies = ["🇫🇷", "🥖", "🥐", "🍷"]
         for emoji in emojies:
@@ -118,7 +118,7 @@ async def proccess_reactions(message):
 async def proccess_twitter_link(message):
     if message.content.startswith("!") or message.author.id == bot.user.id:
         return
-    
+
     if "https://x.com" in message.content.lower():
         await send_fixed_up_twitter(message, "https://x")
         return
@@ -141,11 +141,11 @@ async def close():
 @bot.command(aliases=["c", "cl"])
 async def clear(ctx, arg: int = 1):
     if ctx.author.id != 277523565920911360:
-       await ctx.send(f"No tienes permisos, perro :dog:")
-       return
+        await ctx.send(f"No tienes permisos, perro :dog:")
+        return
 
     try:
-        await ctx.channel.purge(limit=(int(arg)+1))
+        await ctx.channel.purge(limit=(int(arg) + 1))
 
     except ValueError:
         raise commands.CommandNotFound
@@ -153,19 +153,37 @@ async def clear(ctx, arg: int = 1):
 
 @bot.command(alias="help")
 async def help(ctx):
-    embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
+    embedMsg = discord.Embed(title="Comando ayuda",
+                             description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
     embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
-    embedMsg.add_field(name="!play <nombre o url>", value="Reproduce el sonido con ese nombre o la url indicada. Esta url puede ser directa o de los servicios que soporte yt-dlp, como YouTube o Twitter. También funciona con !p.", inline=False)
-    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s.", inline=False)
+    embedMsg.add_field(name="!play <nombre o url>",
+                       value="Reproduce el sonido con ese nombre o la url indicada. Esta url puede ser directa o de los servicios que soporte yt-dlp, como YouTube o Twitter. También funciona con !p.",
+                       inline=False)
+    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s.",
+                       inline=False)
     embedMsg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola.", inline=False)
-    embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
-    embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
-    embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
-    embedMsg.add_field(name="!yt <búsqueda>", value="Busca en YouTube y reproduce el primer resultado. También funciona con !youtube", inline=False)
-    embedMsg.add_field(name="!ytmusic <búsqueda>", value="Busca en YouTube Music y reproduce el primer resultado. Puedes usar hashtags para especificar el tipo de contenido: #albums, #artists, #community playlists, #featured playlists, #songs, #videos. También funciona con !ytm y !youtubemusic", inline=False)
-    embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
-    embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
-    embedMsg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
+    embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.",
+                       inline=False)
+    embedMsg.add_field(name="!ask",
+                       value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.",
+                       inline=False)
+    embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.",
+                       inline=False)
+    embedMsg.add_field(name="!yt <búsqueda>",
+                       value="Busca en YouTube y reproduce el primer resultado. También funciona con !youtube",
+                       inline=False)
+    embedMsg.add_field(name="!ytmusic <búsqueda>",
+                       value="Busca en YouTube Music y reproduce el primer resultado. Puedes usar hashtags para especificar el tipo de contenido: #albums, #artists, #community playlists, #featured playlists, #songs, #videos. También funciona con !ytm y !youtubemusic",
+                       inline=False)
+    embedMsg.add_field(name="!buscar <nombre>",
+                       value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.",
+                       inline=False)
+    embedMsg.add_field(name="!dalle <texto>",
+                       value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.",
+                       inline=False)
+    embedMsg.add_field(name="!confetti <número>",
+                       value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.",
+                       inline=False)
 
     await ctx.send(embed=embedMsg)
 
@@ -175,7 +193,8 @@ async def sonidos(ctx):
     blank_space = "\u2800"
     sounds_list = get_sounds_list()
     database.register_user_interaction(ctx.author.name, "sonidos")
-    embedMsg = discord.Embed(title="Lista de sonidos", description=f"Actualmente hay {len(get_sounds())} sonidos.", color=0x01B05B)
+    embedMsg = discord.Embed(title="Lista de sonidos", description=f"Actualmente hay {len(get_sounds())} sonidos.",
+                             color=0x01B05B)
     for sound_block in sounds_list:
         embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
 
@@ -188,13 +207,14 @@ async def search(ctx, arg):
     sounds_list = get_sound_list_filtered(arg)
     database.register_user_interaction(ctx.author.name, "buscar")
     if len(sounds_list[0]) > 0:
-        embedMsg = discord.Embed(title="Lista de sonidos", description=f"Sonidos que contienen `{arg}` en su nombre", color=0x01B05B)
+        embedMsg = discord.Embed(title="Lista de sonidos", description=f"Sonidos que contienen `{arg}` en su nombre",
+                                 color=0x01B05B)
         for sound_block in sounds_list:
             if len(sound_block) > 0:
                 embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
 
         await ctx.send(embed=embedMsg)
-    
+
     else:
         await ctx.send(f":robot: No he encontrado ningún sonido que contenga `{arg}`.")
 
@@ -230,7 +250,8 @@ async def tts(ctx, *args):
 
 @bot.command(aliases=["q", "cola"])
 async def queue(ctx):
-    embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
+    embedMsg = discord.Embed(title="Cola de sonidos",
+                             description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
     database.register_user_interaction(ctx.author.name, "queue")
 
     if len(sound_queue) > 0:
@@ -377,9 +398,10 @@ async def generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
     if yt_dlp_info is None:
         return
     entries = yt_dlp_info.get('entries')
-    if entries: # This is a playlist or something similar
+    if entries:  # This is a playlist or something similar
         if len(entries) > 30:
-            await ctx.send(":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
+            await ctx.send(
+                ":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
         for entry in entries[:30]:
             async for sound in generate_sounds_from_url(ctx, entry.get('url'), entry.get('title')):
                 yield sound
@@ -444,9 +466,11 @@ async def bot_vitals():
                     if sound.get_type_of_audio() == SoundType.FILE_SILENT:
                         pass
                     elif sound.get_type_of_audio() == SoundType.TTS:
-                        await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
+                        await channel_text.get_text_channel().send(
+                            f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
                     else:
-                        await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
+                        await channel_text.get_text_channel().send(
+                            f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
 
                     await play_sound(voice_client, sound)
                     sound_queue.pop(0)
@@ -494,13 +518,12 @@ async def kiwi():
                     else:
                         sound_name = "ohvaya"
 
-                database.register_user_interaction("kiwi", "kiwi", sound_name)
-
                 if sound_name is not None:
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_channel)
                     sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
+                    database.register_user_interaction("kiwi", "kiwi", sound_name)
                     sound_queue.append(sound)
                     bot_vitals.start()
 
@@ -514,12 +537,14 @@ async def dalle_vitals():
         print(f"dale_vitals >> Hay imágenes en la cola: {len(dalle_results_queue)} imágenes")
         if result.get_response_type() == ResponseType.SUCCESS:
             with open(result.get_image(), "rb") as image_file:
-                await channel_text.get_text_channel().send(":e_mail: Imagen recibida:", file=discord.File(image_file, filename="dalle.png"))
+                await channel_text.get_text_channel().send(":e_mail: Imagen recibida:",
+                                                           file=discord.File(image_file, filename="dalle.png"))
 
             remove_image_from_memory(result.get_image())
 
         else:
-            await channel_text.get_text_channel().send(":confused: Ha ocurrido un error generando la imagen. Intenta de nuevo.")
+            await channel_text.get_text_channel().send(
+                ":confused: Ha ocurrido un error generando la imagen. Intenta de nuevo.")
         dalle_results_queue.remove(result)
 
     else:
@@ -549,7 +574,7 @@ async def clear_bot(voice_client):
     except Exception:
         print(">> Exception captured.. voice_client wasn't connected or something happened at clear_bot()")
         traceback.print_exc()
-    
+
     voice_channel.set_voice_client(None)
     voice_channel.set_voice_channel(None)
     bot_vitals.stop()

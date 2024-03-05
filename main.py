@@ -1,29 +1,32 @@
 import logging
 import random
-import traceback
-
-from discord.ext import tasks
-from discord.ext import commands
+from collections.abc import AsyncIterable
+from datetime import datetime, time
 from threading import Event
 
+import discord
+from discord import Message, Guild
+from discord.ext import commands
+from discord.ext import tasks
+from discord.ext.commands import Context
+
+from bd import Database
+from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory, DalleImages
+from gpt3 import *
+from text import TextChannel
+from threads import launch
+from tts import generate_tts, clear_tts, tts_base_url
 from utils import *
 from voice import *
-from text import TextChannel
-from tts import generate_tts, clear_tts, tts_base_url
-from gpt3 import *
 from youtube import *
-from bd import Database
-from threads import launch
-from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory
-from datetime import datetime, time
 
 intents = discord.Intents.all()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents, guild_subscriptions=True, fetch_offline_members=True)
 bot.remove_command("help")
 
-sound_queue = []
-dalle_results_queue = []
+sound_queue: list[Sound] = []
+dalle_results_queue: list[DalleImages] = []
 max_number = 10000
 kiwi_chance = 500
 dalle_event = Event()
@@ -48,17 +51,17 @@ async def on_ready():
 
 
 @bot.event
-async def on_guild_join(guild):
+async def on_guild_join(guild: Guild):
     for text_channel in guild.text_channels:
         if text_channel.permissions_for(guild.me).send_messages:
-            await text_channel.send("~ Oh.. :robot: hello, _I'm here_.")
+            await text_channel.send("~ Oh... :robot: hello, _I'm here_.")
             break
 
 
 @bot.listen()
-async def on_command_error(ctx, exception):
+async def on_command_error(ctx: Context, exception: Exception):
     if isinstance(exception, commands.CommandNotFound):
-        await ctx.send("Oh.. No encuentro ese comando en mis registros. Prueba a escribir `!help`")
+        await ctx.send("Oh... No encuentro ese comando en mis registros. Prueba a escribir `!help`")
 
     elif isinstance(exception, commands.MissingRequiredArgument):
         await ctx.send("No has escrito nada. :confused:")
@@ -73,20 +76,20 @@ async def on_command_error(ctx, exception):
 
 
 @bot.event
-async def on_error(event, *args, **kwargs):
+async def on_error(event_name: str, *args, **kwargs):
     if channel_text.get_text_channel() is not None:
-        await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event}.")
+        await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event_name}.")
     print(args)
 
 
 @bot.event
-async def on_message(message):
-    await proccess_reactions(message)
-    await proccess_twitter_link(message)
+async def on_message(message: Message):
+    await process_reactions(message)
+    await process_twitter_link(message)
     await bot.process_commands(message)
 
 
-async def proccess_reactions(message):
+async def process_reactions(message: Message):
     if message.author.id == 378213328570417154:
         emoji = "🍆"
         await message.add_reaction(emoji)
@@ -100,22 +103,22 @@ async def proccess_reactions(message):
         await message.add_reaction(emoji)
     
     if "francia" in message.content.lower():
-        emojies = ["🇫🇷", "🥖", "🥐", "🍷"]
-        for emoji in emojies:
+        emojis = ["🇫🇷", "🥖", "🥐", "🍷"]
+        for emoji in emojis:
             await message.add_reaction(emoji)
 
     if "españa" in message.content.lower():
-        emojies = ["🆙", "🇪🇸", "❤️‍🔥", "💃", "🥘", "🏖️", "🛌", "🇪🇦"]
-        for emoji in emojies:
+        emojis = ["🆙", "🇪🇸", "❤️‍🔥", "💃", "🥘", "🏖️", "🛌", "🇪🇦"]
+        for emoji in emojis:
             await message.add_reaction(emoji)
 
     if "mexico" in message.content.lower():
-        emojies = ["🇲🇽", "🌯", "🌮", "🫔"]
-        for emoji in emojies:
+        emojis = ["🇲🇽", "🌯", "🌮", "🫔"]
+        for emoji in emojis:
             await message.add_reaction(emoji)
 
 
-async def proccess_twitter_link(message):
+async def process_twitter_link(message: Message):
     if message.content.startswith("!") or message.author.id == bot.user.id:
         return
     
@@ -127,7 +130,7 @@ async def proccess_twitter_link(message):
         await send_fixed_up_twitter(message, "https://twitter")
 
 
-async def send_fixed_up_twitter(message, content):
+async def send_fixed_up_twitter(message: Message, content: str):
     fixed_tweet = message.content.lower().replace(content, "https://fixupx").split("?")[0]
     await message.channel.send(f"Tweet enviado por {message.author.mention}, enlace arreglado:\n{fixed_tweet}")
     await message.delete()
@@ -139,10 +142,10 @@ async def close():
 
 
 @bot.command(aliases=["c", "cl"])
-async def clear(ctx, arg: int = 1):
+async def clear(ctx: Context, arg: int = 1):
     if ctx.author.id != 277523565920911360:
-       await ctx.send(f"No tienes permisos, perro :dog:")
-       return
+        await ctx.send(f"No tienes permisos, perro :dog:")
+        return
 
     try:
         await ctx.channel.purge(limit=(int(arg)+1))
@@ -151,99 +154,94 @@ async def clear(ctx, arg: int = 1):
         raise commands.CommandNotFound
 
 
-@bot.command(alias="help")
-async def help(ctx):
-    embedMsg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
-    embedMsg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
-    embedMsg.add_field(name="!play <nombre o url>", value="Reproduce el sonido con ese nombre o la url indicada. Esta url puede ser directa o de los servicios que soporte yt-dlp, como YouTube o Twitter. También funciona con !p.", inline=False)
-    embedMsg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s.", inline=False)
-    embedMsg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola.", inline=False)
-    embedMsg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
-    embedMsg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
-    embedMsg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
-    embedMsg.add_field(name="!yt <búsqueda>", value="Busca en YouTube y reproduce el primer resultado. También funciona con !youtube", inline=False)
-    embedMsg.add_field(name="!ytmusic <búsqueda>", value="Busca en YouTube Music y reproduce el primer resultado. Puedes usar hashtags para especificar el tipo de contenido: #albums, #artists, #community playlists, #featured playlists, #songs, #videos. También funciona con !ytm y !youtubemusic", inline=False)
-    embedMsg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
-    embedMsg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
-    embedMsg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
+@bot.command()
+async def help(ctx: Context):
+    embed_msg = discord.Embed(title="Comando ayuda", description="En este comando se recoge todos los comandos registrados.", color=0x01B05B)
+    embed_msg.add_field(name="!sonidos", value="Muestra el listado de sonidos actualmente disponibles.", inline=False)
+    embed_msg.add_field(name="!play <nombre o url>", value="Reproduce el sonido con ese nombre o la url indicada. Esta url puede ser directa o de los servicios que soporte yt-dlp, como YouTube o Twitter. También funciona con !p.", inline=False)
+    embed_msg.add_field(name="!stop", value="Para el sonido actual que se está reproduciendo. También funciona con !s.", inline=False)
+    embed_msg.add_field(name="!queue", value="Muestra la cola actual. También funciona con !q y !cola.", inline=False)
+    embed_msg.add_field(name="!tts <mensaje>", value="Genera un mensaje tts. También funciona con !t, !say y !decir.", inline=False)
+    embed_msg.add_field(name="!ask", value="Genera una pregunta a la API de OpenAI y la reproduce. También funciona con !a, !preguntar y !pr.", inline=False)
+    embed_msg.add_field(name="!poll", value="Genera una encuesta de sí o no. También funciona con !e y !encuesta.", inline=False)
+    embed_msg.add_field(name="!yt <búsqueda>", value="Busca en YouTube y reproduce el primer resultado. También funciona con !youtube", inline=False)
+    embed_msg.add_field(name="!ytmusic <búsqueda>", value="Busca en YouTube Music y reproduce el primer resultado. Puedes usar hashtags para especificar el tipo de contenido: #albums, #artists, #community playlists, #featured playlists, #songs, #videos. También funciona con !ytm y !youtubemusic", inline=False)
+    embed_msg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
+    embed_msg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
+    embed_msg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
 
-    await ctx.send(embed=embedMsg)
+    await ctx.send(embed=embed_msg)
 
 
-@bot.command(alias="sonidos")
-async def sonidos(ctx):
+@bot.command()
+async def sonidos(ctx: Context):
     blank_space = "\u2800"
     sounds_list = get_sounds_list()
     database.register_user_interaction(ctx.author.name, "sonidos")
-    embedMsg = discord.Embed(title="Lista de sonidos", description=f"Actualmente hay {len(get_sounds())} sonidos.", color=0x01B05B)
+    embed_msg = discord.Embed(title="Lista de sonidos", description=f"Actualmente hay {len(get_sounds())} sonidos.", color=0x01B05B)
     for sound_block in sounds_list:
-        embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
+        embed_msg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
 
-    await ctx.send(embed=embedMsg)
+    await ctx.send(embed=embed_msg)
 
 
 @bot.command(aliases=["buscar", "b"])
-async def search(ctx, arg):
+async def search(ctx: Context, arg: str):
     blank_space = "\u2800"
     sounds_list = get_sound_list_filtered(arg)
     database.register_user_interaction(ctx.author.name, "buscar")
     if len(sounds_list[0]) > 0:
-        embedMsg = discord.Embed(title="Lista de sonidos", description=f"Sonidos que contienen `{arg}` en su nombre", color=0x01B05B)
+        embed_msg = discord.Embed(title="Lista de sonidos", description=f"Sonidos que contienen `{arg}` en su nombre", color=0x01B05B)
         for sound_block in sounds_list:
             if len(sound_block) > 0:
-                embedMsg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
+                embed_msg.add_field(name=blank_space, value="\n".join(sound_block), inline=True)
 
-        await ctx.send(embed=embedMsg)
+        await ctx.send(embed=embed_msg)
     
     else:
         await ctx.send(f":robot: No he encontrado ningún sonido que contenga `{arg}`.")
 
 
 @bot.command(aliases=["p"], require_var_positional=True)
-async def play(ctx, *args):
+async def play(ctx: Context, *args: str):
     user_voice_channel = get_user_voice_channel(ctx)
     if user_voice_channel is not None:
-        async for sound in generate_sounds(ctx, args):
+        async for sound in generate_sounds(ctx, *args):
             await add_to_queue(ctx, user_voice_channel, sound)
     else:
-        await ctx.send("No estás en ningún canal conectado.. :confused:")
+        await ctx.send("No estás en ningún canal conectado. :confused:")
 
 
 @bot.command(aliases=["decir", "t", "say"], require_var_positional=True)
-async def tts(ctx, *args):
+async def tts(ctx: Context, *args: str):
     text = " ".join(args)
-    ch = None
+    user_voice_channel = get_user_voice_channel(ctx)
     database.register_user_interaction(ctx.author.name, "tts")
 
-    for channel in ctx.author.guild.voice_channels:
-        if len(channel.members) > 0 and ctx.author in channel.members:
-            ch = channel
-            break
-
-    if ch is not None:
+    if user_voice_channel is not None:
         channel_text.set_text_channel(ctx.channel)
-        voice_channel.set_voice_channel(ch)
+        voice_channel.set_voice_channel(user_voice_channel)
 
-    await ctx.send(":tools::snail: Generando mensaje tts..")
-    launch(lambda: generate_tts(text, get_speed(text), tts_listener))
+    await ctx.send(":tools::snail: Generando mensaje tts...")
+    launch(lambda: generate_tts(text, tts_listener))
 
 
 @bot.command(aliases=["q", "cola"])
-async def queue(ctx):
-    embedMsg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
+async def queue(ctx: Context):
+    embed_msg = discord.Embed(title="Cola de sonidos", description=f"Actualmente hay {len(sound_queue)} sonidos en la cola.", color=0x01B05B)
     database.register_user_interaction(ctx.author.name, "queue")
 
     if len(sound_queue) > 0:
         sounds = map(lambda sound: sound.get_name(), sound_queue)
-        embedMsg.add_field(name="Sonidos en cola", value=", ".join(sounds), inline=False)
+        embed_msg.add_field(name="Sonidos en cola", value=", ".join(sounds), inline=False)
 
-    await ctx.send(embed=embedMsg)
+    await ctx.send(embed=embed_msg)
 
 
 @bot.command(aliases=["s"])
-async def stop(ctx):
+async def stop(ctx: Context):
     for voice_client in bot.voice_clients:
-        if voice_client.guild == ctx.guild and voice_client.is_playing():
+        if isinstance(voice_client, VoiceClient) and voice_client.guild == ctx.guild and voice_client.is_playing():
             database.register_user_interaction(ctx.author.name, "stop")
             voice_client.stop()
             await ctx.send(":stop_button: Sonido parado.")
@@ -251,44 +249,44 @@ async def stop(ctx):
 
 
 @bot.command(aliases=["dc"])
-async def disconnect(ctx):
+async def disconnect(ctx: Context):
     for voice_client in bot.voice_clients:
-        if voice_client.guild == ctx.guild:
+        if isinstance(voice_client, VoiceClient) and voice_client.guild == ctx.guild:
             database.register_user_interaction(ctx.author.name, "disconnect")
             await clear_bot(voice_client)
-            await ctx.send(":robot: Desconectando..")
+            await ctx.send(":robot: Desconectando...")
             break
 
 
 @bot.command(aliases=["e", "encuesta"], require_var_positional=True)
-async def poll(ctx, *args):
+async def poll(ctx: Context, *args: str):
     question = " ".join(args)
-    embedMsg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
-    embedMsg.add_field(name="Pregunta", value=question, inline=False)
-    message = await ctx.send(embed=embedMsg)
+    embed_msg = discord.Embed(title="Encuesta", description=f"Creada por {ctx.author.display_name}.", color=0x01B05B)
+    embed_msg.add_field(name="Pregunta", value=question, inline=False)
+    message = await ctx.send(embed=embed_msg)
     database.register_user_interaction(ctx.author.name, "poll")
     await message.add_reaction("👍")
     await message.add_reaction("👎")
 
 
 @bot.command(aliases=["a", "preguntar", "pr"])
-async def ask(ctx, *args):
+async def ask(ctx: Context, *args: str):
     text = " ".join(args)
     database.register_user_interaction(ctx.author.name, "ask")
-    await ctx.send(":clock10: Generando respuesta.")
+    await ctx.send(":clock10: Generando respuesta...")
     response = generate_response(text)
     await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
     await tts(ctx, response)
 
 
 @bot.command(aliases=["yt"], require_var_positional=True)
-async def youtube(ctx, *args):
+async def youtube(ctx: Context, *args: str):
     search_query = " ".join(args)
     user_voice_channel = get_user_voice_channel(ctx)
     database.register_user_interaction(ctx.author.name, "youtube")
     if user_voice_channel is not None:
         channel_text.set_text_channel(ctx.channel)
-        await ctx.send(f":clock10: Buscando `{search_query}` en YouTube.")
+        await ctx.send(f":clock10: Buscando `{search_query}` en YouTube...")
         yt_dlp_info = yt_search_and_extract_yt_dlp_info(search_query)
         if yt_dlp_info is not None:
             async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
@@ -296,21 +294,21 @@ async def youtube(ctx, *args):
         else:
             await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
     else:
-        await ctx.send("No estás en ningún canal conectado.. :confused:")
+        await ctx.send("No estás en ningún canal conectado. :confused:")
 
 
 @bot.command(aliases=["d"], require_var_positional=True)
-async def dalle(ctx, *args):
+async def dalle(ctx: Context, *args: str):
     text = " ".join(args)
     database.register_user_interaction(ctx.author.name, "dalle")
     channel_text.set_text_channel(ctx.channel)
-    await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos..")
+    await ctx.send(":clock10: Generando imagen. Puede tardar varios minutos...")
     launch(lambda: generate_images(text, dalle_listener))
 
 
 @bot.command(aliases=["co"])
-async def confetti(ctx, arg: int = 1):
-    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo.")
+async def confetti(ctx: Context, arg: int = 1):
+    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
     database.register_user_interaction(ctx.author.name, "confetti")
     yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
     if yt_dlp_info is not None:
@@ -322,7 +320,7 @@ async def confetti(ctx, arg: int = 1):
 
 
 @bot.command(aliases=["ytmusic", "ytm"], require_var_positional=True)
-async def youtubemusic(ctx, *args):
+async def youtubemusic(ctx: Context, *args: str):
     search_query = " ".join(args)
     database.register_user_interaction(ctx.author.name, "ytmusic")
 
@@ -331,12 +329,12 @@ async def youtubemusic(ctx, *args):
 
     result_url = yt_music_search_and_get_first_result_url(search_query)
     if result_url is not None:
-        await youtube(ctx, result_url)
+        await play(ctx, result_url)
     else:
-        ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
+        await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
 
 
-async def generate_sounds(ctx, args):
+async def generate_sounds(ctx: Context, *args: str) -> AsyncIterable[Sound]:
     for arg in args:
         if arg.lower() == "lofi" or arg.lower() == "lo-fi":
             database.register_user_interaction(ctx.author.name, "play")
@@ -345,14 +343,14 @@ async def generate_sounds(ctx, args):
             yield Sound(name, SoundType.URL, url)
 
         elif arg.startswith("http://") or arg.startswith("https://"):
-            await ctx.send(":clock10: Obteniendo información de la URL.")
+            await ctx.send(":clock10: Obteniendo información...")
             database.register_user_interaction(ctx.author.name, "play")
             async for sound in generate_sounds_from_url(ctx, arg, None):
                 yield sound
 
         else:
             audio = generate_audio_path(arg)
-            if path_exists(audio):
+            if os.path.exists(audio):
                 database.register_user_interaction(ctx.author.name, "play", arg)
                 sound = Sound(arg, SoundType.FILE, audio)
                 yield sound
@@ -361,7 +359,7 @@ async def generate_sounds(ctx, args):
                 await ctx.send(f"`{arg}` no existe. :frowning:")
 
 
-async def generate_sounds_from_url(ctx, url, name):
+async def generate_sounds_from_url(ctx: Context, url: Optional[str], name: Optional[str]) -> AsyncIterable[Sound]:
     if url is None:
         pass
     elif is_suitable_for_yt_dlp(url):
@@ -373,11 +371,11 @@ async def generate_sounds_from_url(ctx, url, name):
         yield sound
 
 
-async def generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
+async def generate_sounds_from_yt_dlp_info(ctx: Context, yt_dlp_info: Any) -> AsyncIterable[Sound]:
     if yt_dlp_info is None:
         return
     entries = yt_dlp_info.get('entries')
-    if entries: # This is a playlist or something similar
+    if entries:  # This is a playlist or something similar
         if len(entries) > 30:
             await ctx.send(":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
         for entry in entries[:30]:
@@ -388,17 +386,16 @@ async def generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
             yield sound
 
 
-def get_user_voice_channel(ctx):
+def get_user_voice_channel(ctx: Context):
     try:
         voice_state = ctx.message.author.voice
         return voice_state.channel if voice_state is not None else None
-    except:
+    except Exception:
         print("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
         traceback.print_exc()
-        return None
 
 
-async def add_to_queue(ctx, user_voice_channel, sound):
+async def add_to_queue(ctx: Context, user_voice_channel: Optional[VoiceChannel], sound: Sound):
     if user_voice_channel is not None:
         channel_text.set_text_channel(ctx.channel)
         if voice_channel.get_voice_client() is None:
@@ -408,16 +405,16 @@ async def add_to_queue(ctx, user_voice_channel, sound):
             bot_vitals.start()
 
         else:
-            await ctx.send(f":notes: Añadido a la cola `{sound.name}`.")
+            await ctx.send(f":notes: Añadido a la cola `{sound.get_name()}`.")
             sound_queue.append(sound)
 
 
-def dalle_listener(result):
+def dalle_listener(result: DalleImages):
     dalle_results_queue.append(result)
     dalle_event.set()
 
 
-def tts_listener(original_file):
+def tts_listener(original_file: str):
     filename = original_file.replace(tts_base_url, "").replace(".mp3", "")
     sound = Sound(filename, SoundType.TTS, original_file)
     sound_queue.append(sound)
@@ -426,24 +423,24 @@ def tts_listener(original_file):
 
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
-    if voice_channel.get_voice_client() == None and voice_channel.get_voice_channel() != None:
-        print("bot_vitals >> No hay ningún cliente conectado..")
+    if voice_channel.get_voice_client() is None and voice_channel.get_voice_channel() is not None:
+        print("bot_vitals >> No hay ningún cliente conectado")
         voice_client = await get_voice_client(voice_channel)
-        print(f"bot_vitals >> Conectando a {voice_client}..")
+        print(f"bot_vitals >> Conectando a {voice_client}...")
         voice_channel.set_voice_client(voice_client)
 
     try:
         for voice_client in bot.voice_clients:
-            if not voice_client.is_playing():
+            if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
                 if len(sound_queue) == 0:
                     await clear_bot(voice_client)
 
                 else:
                     sound = sound_queue[0]
 
-                    if sound.get_type_of_audio() == SoundType.FILE_SILENT:
+                    if sound.get_sound_type() == SoundType.FILE_SILENT:
                         pass
-                    elif sound.get_type_of_audio() == SoundType.TTS:
+                    elif sound.get_sound_type() == SoundType.TTS:
                         await channel_text.get_text_channel().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
                     else:
                         await channel_text.get_text_channel().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
@@ -453,9 +450,8 @@ async def bot_vitals():
             break
 
         else:
-            print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola..")
+            print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola...")
             await clear_bot(None)
-
 
     except Exception:
         print("bot_vitals >> Something happened, stopping bot_vitals.")
@@ -470,13 +466,13 @@ async def kiwi():
     eci_channel = bot.get_channel(969557887305265184)
 
     if eci_channel is not None and len(eci_channel.members) > 1:
-        play_sound = True
+        should_play_sound = True
         for voice_client in bot.voice_clients:
-            if eci_channel.guild == voice_client.guild:
-                play_sound = False
+            if isinstance(voice_client, VoiceClient) and eci_channel.guild == voice_client.guild:
+                should_play_sound = False
                 break
 
-        if play_sound:
+        if should_play_sound:
             try:
                 current_time = datetime.now().time().replace(second=0, microsecond=0)
                 sound_name = None
@@ -498,14 +494,14 @@ async def kiwi():
 
                 if sound_name is not None:
                     voice_client = await eci_channel.connect()
-                    voice_channel.set_voice_client(voice_channel)
+                    voice_channel.set_voice_client(voice_client)
                     sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
                     sound_queue.append(sound)
                     bot_vitals.start()
 
             except discord.errors.ClientException as exc:
-                logging.error(">> Exception captured.. Something happened at kiwi()", exc_info=exc)
+                logging.error(">> Exception captured. Something happened at kiwi()", exc_info=exc)
 
 
 @tasks.loop(seconds=1)
@@ -540,14 +536,14 @@ async def event_listener():
             bot_vitals.start()
 
 
-async def clear_bot(voice_client):
+async def clear_bot(voice_client: Optional[VoiceClient]):
     try:
-        if voice_client != None:
+        if voice_client is not None:
             voice_client.stop()
             await voice_client.disconnect()
 
     except Exception:
-        print(">> Exception captured.. voice_client wasn't connected or something happened at clear_bot()")
+        print(">> Exception captured. voice_client wasn't connected or something happened at clear_bot()")
         traceback.print_exc()
     
     voice_channel.set_voice_client(None)
@@ -559,7 +555,7 @@ async def clear_bot(voice_client):
 
 if __name__ == "__main__":
     channel_text = TextChannel()
-    voice_channel = VoiceChannel()
+    voice_channel = CurrentVoiceChannel()
     database = Database(get_username_key(), get_password_key(), get_database_key())
     init(get_openai_key())
     bot.run(get_bot_key())

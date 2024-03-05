@@ -1,5 +1,6 @@
 discord.py
 discord.py[voice]
+requests
 gtts
 Pillow
 yt-dlp

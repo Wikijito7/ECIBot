@@ -1,14 +1,13 @@
-from fileinput import filename
-from gtts import gTTS
-import os
-import discord
-import time
-import ffmpy
-from utils import get_speed
 import hashlib
+import os
+import time
+from collections.abc import Callable
+from typing import Optional, Any
 from urllib.parse import quote
 from urllib.request import urlretrieve
 
+import ffmpy
+from gtts import gTTS
 
 tts_base_url = "./tts/"
 
@@ -24,7 +23,7 @@ def clear_tts():
         os.remove(os.path.join(tts_base_url, file))
 
 
-def get_loquendo_tts(text):
+def get_loquendo_tts(text: str) -> Optional[str]:
     try:  
         url_encoded_text = quote(text)
         file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
@@ -39,28 +38,27 @@ def get_loquendo_tts(text):
 
     except Exception:
         print("TTS >> There's an error with the Loquendo TTS, trying with Google tts")
-        return get_google_tts(text, get_speed(text))
+        return get_google_tts(text)
 
 
-def get_google_tts(text, speed):
-        tts = gTTS(text=text, lang='es', tld='es')
-        file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
-        check_base_dir()
-        tts.save(file_name)
-        file = change_speed(file_name, speed)
-        return file
+def get_google_tts(text: str) -> str:
+    tts = gTTS(text=text, lang='es', tld='es')
+    file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
+    check_base_dir()
+    tts.save(file_name)
+    speed = get_speed(text)
+    file = change_speed(file_name, speed)
+    return file
 
 
-def report_progress(block_num, block_size, total_size):
+def report_progress(block_num: int, block_size: int, total_size: int):
     percent = int(block_num * block_size * 100 / total_size)
     print("\r%d%%" % percent, end="")
 
 
-def generate_tts(text, speed, listener):
-    audio = None
-
-    if len(text) > 256:
-        audio = get_google_tts(text, speed)
+def generate_tts(text: str, listener: Callable[[str], Any]):
+    if len(text) > 600:
+        audio = get_google_tts(text)
 
     else:
         audio = get_loquendo_tts(text)
@@ -68,7 +66,20 @@ def generate_tts(text, speed, listener):
     listener(audio)
 
 
-def change_speed(file_name, speed):
+def get_speed(text: str) -> float:
+    words = text.split(" ")
+
+    if len(words) < 16:
+        return 1.2
+
+    elif len(words) < 32:
+        return 1.3
+
+    else:
+        return 1.45
+
+
+def change_speed(file_name: str, speed: float) -> str:
     try:
         new_file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
         ff = ffmpy.FFmpeg(inputs={file_name: None}, outputs={new_file_name: f"-filter:a atempo={speed}"})

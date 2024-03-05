@@ -1,20 +1,20 @@
+from typing import Optional
+
 from openai import OpenAI
 import logging as log
 
-client = None
+openai_client: Optional[OpenAI] = None
 
 
-def init(api_key):
-    global client
-    client = OpenAI(api_key=api_key)
+def init(api_key: str):
+    global openai_client
+    openai_client = OpenAI(api_key=api_key)
 
 
-def generate_response(*args):
-    log.info(f'generate_response >> requesting: {" ".join(args)}')
-    prompt = " ".join(args)
-    tokens = 4096 - len(prompt)
+def generate_response(prompt: str) -> Optional[str]:
+    log.info(f'generate_response >> requesting: {prompt}')
     try:
-        response = client.completions.create(
+        response = openai_client.completions.create(
             model='gpt-3.5-turbo-instruct',
             prompt=prompt,
             max_tokens=2048)

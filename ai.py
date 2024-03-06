@@ -4,7 +4,7 @@ from openai import OpenAI
 import logging as log
 
 
-class GPT3Client:
+class OpenAiClient:
     def __init__(self, api_key: str):
         self.__openai_client: Optional[OpenAI] = OpenAI(api_key=api_key)
 

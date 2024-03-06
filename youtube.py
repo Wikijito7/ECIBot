@@ -1,4 +1,3 @@
-import os
 import traceback
 from typing import Any, Optional
 from collections.abc import AsyncIterable
@@ -6,8 +5,7 @@ from collections.abc import AsyncIterable
 import yt_dlp
 from discord.ext.commands import Context
 
-from bd import Database
-from voice import Sound, SoundType, generate_audio_path
+from voice import Sound, SoundType
 
 YT_DLP_FORMATS = 'bestaudio/251/250/249/233/234/hls-audio-128000-Audio/m4a/worstaudio/worst'
 YT_DLP_EXTRACTORS = yt_dlp.extractor.gen_extractors()
@@ -65,31 +63,6 @@ def is_suitable_for_yt_dlp(url: str) -> bool:
     return False
 
 
-async def generate_sounds(ctx: Context, *args: str, database: Database) -> AsyncIterable[Sound]:
-    for arg in args:
-        if arg.lower() == "lofi" or arg.lower() == "lo-fi":
-            database.register_user_interaction(ctx.author.name, "play")
-            url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
-            name = "Lofi 24/7"
-            yield Sound(name, SoundType.URL, url)
-
-        elif arg.startswith("http://") or arg.startswith("https://"):
-            await ctx.send(":clock10: Obteniendo información...")
-            database.register_user_interaction(ctx.author.name, "play")
-            async for sound in generate_sounds_from_url(ctx, arg, None):
-                yield sound
-
-        else:
-            audio = generate_audio_path(arg)
-            if os.path.exists(audio):
-                database.register_user_interaction(ctx.author.name, "play", arg)
-                sound = Sound(arg, SoundType.FILE, audio)
-                yield sound
-
-            else:
-                await ctx.send(f"`{arg}` no existe. :frowning:")
-
-
 async def generate_sounds_from_url(ctx: Context, url: Optional[str], name: Optional[str]) -> AsyncIterable[Sound]:
     if url is None:
         pass
@@ -115,12 +88,3 @@ async def generate_sounds_from_yt_dlp_info(ctx: Context, yt_dlp_info: Any) -> As
     else:
         async for sound in generate_sounds_from_url(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
             yield sound
-
-
-def get_user_voice_channel(ctx: Context):
-    try:
-        voice_state = ctx.message.author.voice
-        return voice_state.channel if voice_state is not None else None
-    except Exception:
-        print("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
-        traceback.print_exc()

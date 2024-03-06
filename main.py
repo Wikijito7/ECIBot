@@ -9,7 +9,7 @@ from discord.ext import commands
 from discord.ext import tasks
 
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory, DalleImages
-from gpt3 import *
+from ai import *
 from text import TextChannel
 from threads import launch
 from tts import generate_tts, clear_tts, tts_base_url
@@ -453,5 +453,5 @@ if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = CurrentVoiceChannel()
     database = Database(get_username_key(), get_password_key(), get_database_key())
-    openai_client = GPT3Client(get_openai_key())
+    openai_client = OpenAiClient(get_openai_key())
     bot.run(get_bot_key())

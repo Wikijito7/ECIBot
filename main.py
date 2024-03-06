@@ -159,7 +159,7 @@ async def search(ctx: Context, arg: str):
 async def play(ctx: Context, *args: str):
     user_voice_channel = get_user_voice_channel(ctx)
     if user_voice_channel is not None:
-        async for sound in generate_sounds(ctx, *args, database):
+        async for sound in generate_sounds(ctx, database, *args):
             await add_to_queue(ctx, user_voice_channel, sound)
     else:
         await ctx.send("No estás en ningún canal conectado. :confused:")

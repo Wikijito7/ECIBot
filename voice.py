@@ -93,7 +93,7 @@ def get_user_voice_channel(ctx: Context):
         traceback.print_exc()
 
 
-async def generate_sounds(ctx: Context, *args: str, database: Database) -> AsyncIterable[Sound]:
+async def generate_sounds(ctx: Context, database: Database, *args: str) -> AsyncIterable[Sound]:
     for arg in args:
         if arg.lower() == "lofi" or arg.lower() == "lo-fi":
             database.register_user_interaction(ctx.author.name, "play")

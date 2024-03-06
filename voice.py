@@ -1,9 +1,16 @@
+import os
+import traceback
+from collections.abc import AsyncIterable
 from typing import Optional
 
 from discord import FFmpegPCMAudio, VoiceClient, VoiceChannel
+from discord.ext.commands import Context
 
+from bd import Database
 from utils import AUDIO_FOLDER_PATH
 from enum import Enum
+
+from youtube import generate_sounds_from_url
 
 FFMPEG_OPTIONS_FOR_REMOTE_URL = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -74,6 +81,41 @@ async def get_voice_client(voice_channel: CurrentVoiceChannel) -> VoiceClient:
 
     else:
         return await voice_channel.get_voice_channel().connect()        
+
+
+def get_user_voice_channel(ctx: Context):
+    try:
+        voice_state = ctx.message.author.voice
+        return voice_state.channel if voice_state is not None else None
+
+    except Exception:
+        print("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
+        traceback.print_exc()
+
+
+async def generate_sounds(ctx: Context, *args: str, database: Database) -> AsyncIterable[Sound]:
+    for arg in args:
+        if arg.lower() == "lofi" or arg.lower() == "lo-fi":
+            database.register_user_interaction(ctx.author.name, "play")
+            url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
+            name = "Lofi 24/7"
+            yield Sound(name, SoundType.URL, url)
+
+        elif arg.startswith("http://") or arg.startswith("https://"):
+            await ctx.send(":clock10: Obteniendo información...")
+            database.register_user_interaction(ctx.author.name, "play")
+            async for sound in generate_sounds_from_url(ctx, arg, None):
+                yield sound
+
+        else:
+            audio = generate_audio_path(arg)
+            if os.path.exists(audio):
+                database.register_user_interaction(ctx.author.name, "play", arg)
+                sound = Sound(arg, SoundType.FILE, audio)
+                yield sound
+
+            else:
+                await ctx.send(f"`{arg}` no existe. :frowning:")
 
 
 if __name__ == "__main__":

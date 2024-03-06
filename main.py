@@ -1,6 +1,5 @@
 import logging
 import random
-from collections.abc import AsyncIterable
 from datetime import datetime, time
 from threading import Event
 
@@ -8,17 +7,18 @@ import discord
 from discord import Message, Guild
 from discord.ext import commands
 from discord.ext import tasks
-from discord.ext.commands import Context
 
-from bd import Database
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory, DalleImages
-from gpt3 import *
+from ai import *
 from text import TextChannel
 from threads import launch
 from tts import generate_tts, clear_tts, tts_base_url
 from utils import *
 from voice import *
 from youtube import *
+from processors import process_link, process_reactions
+
+MAX_RESPONSE_CHARACTERS = 2000 - 6
 
 intents = discord.Intents.all()
 intents.members = True
@@ -85,55 +85,8 @@ async def on_error(event_name: str, *args, **kwargs):
 @bot.event
 async def on_message(message: Message):
     await process_reactions(message)
-    await process_twitter_link(message)
+    await process_link(message, bot.user.id)
     await bot.process_commands(message)
-
-
-async def process_reactions(message: Message):
-    if message.author.id == 378213328570417154:
-        emoji = "🍆"
-        await message.add_reaction(emoji)
-
-    if message.author.id == 651163679814844467:
-        emoji = "😢"
-        await message.add_reaction(emoji)
-
-    if message.author.id == 899918332965298176:
-        emoji = "😭"
-        await message.add_reaction(emoji)
-    
-    if "francia" in message.content.lower():
-        emojis = ["🇫🇷", "🥖", "🥐", "🍷"]
-        for emoji in emojis:
-            await message.add_reaction(emoji)
-
-    if "españa" in message.content.lower():
-        emojis = ["🆙", "🇪🇸", "❤️‍🔥", "💃", "🥘", "🏖️", "🛌", "🇪🇦"]
-        for emoji in emojis:
-            await message.add_reaction(emoji)
-
-    if "mexico" in message.content.lower():
-        emojis = ["🇲🇽", "🌯", "🌮", "🫔"]
-        for emoji in emojis:
-            await message.add_reaction(emoji)
-
-
-async def process_twitter_link(message: Message):
-    if message.content.startswith("!") or message.author.id == bot.user.id:
-        return
-    
-    if "https://x.com" in message.content.lower():
-        await send_fixed_up_twitter(message, "https://x")
-        return
-
-    if "https://twitter.com" in message.content.lower():
-        await send_fixed_up_twitter(message, "https://twitter")
-
-
-async def send_fixed_up_twitter(message: Message, content: str):
-    fixed_tweet = message.content.lower().replace(content, "https://fixupx").split("?")[0]
-    await message.channel.send(f"Tweet enviado por {message.author.mention}, enlace arreglado:\n{fixed_tweet}")
-    await message.delete()
 
 
 @bot.event
@@ -206,7 +159,7 @@ async def search(ctx: Context, arg: str):
 async def play(ctx: Context, *args: str):
     user_voice_channel = get_user_voice_channel(ctx)
     if user_voice_channel is not None:
-        async for sound in generate_sounds(ctx, *args):
+        async for sound in generate_sounds(ctx, *args, database):
             await add_to_queue(ctx, user_voice_channel, sound)
     else:
         await ctx.send("No estás en ningún canal conectado. :confused:")
@@ -274,9 +227,14 @@ async def ask(ctx: Context, *args: str):
     text = " ".join(args)
     database.register_user_interaction(ctx.author.name, "ask")
     await ctx.send(":clock10: Generando respuesta...")
-    response = generate_response(text)
-    await ctx.send(f":e_mail: Respuesta: ```{response[:1900]}```")
-    await tts(ctx, response)
+    response = openai_client.generate_response(text)
+    if response is not None:
+        await ctx.send(":e_mail: Respuesta:", reference=ctx.message)
+        for x in range(0, (len(response) // MAX_RESPONSE_CHARACTERS) + 1):
+            text_start = MAX_RESPONSE_CHARACTERS * x
+            text_end = MAX_RESPONSE_CHARACTERS * (x + 1)
+            await ctx.send(f"```{response[text_start:text_end]}```")
+        await tts(ctx, response)
 
 
 @bot.command(aliases=["yt"], require_var_positional=True)
@@ -332,67 +290,6 @@ async def youtubemusic(ctx: Context, *args: str):
         await play(ctx, result_url)
     else:
         await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
-
-
-async def generate_sounds(ctx: Context, *args: str) -> AsyncIterable[Sound]:
-    for arg in args:
-        if arg.lower() == "lofi" or arg.lower() == "lo-fi":
-            database.register_user_interaction(ctx.author.name, "play")
-            url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
-            name = "Lofi 24/7"
-            yield Sound(name, SoundType.URL, url)
-
-        elif arg.startswith("http://") or arg.startswith("https://"):
-            await ctx.send(":clock10: Obteniendo información...")
-            database.register_user_interaction(ctx.author.name, "play")
-            async for sound in generate_sounds_from_url(ctx, arg, None):
-                yield sound
-
-        else:
-            audio = generate_audio_path(arg)
-            if os.path.exists(audio):
-                database.register_user_interaction(ctx.author.name, "play", arg)
-                sound = Sound(arg, SoundType.FILE, audio)
-                yield sound
-
-            else:
-                await ctx.send(f"`{arg}` no existe. :frowning:")
-
-
-async def generate_sounds_from_url(ctx: Context, url: Optional[str], name: Optional[str]) -> AsyncIterable[Sound]:
-    if url is None:
-        pass
-    elif is_suitable_for_yt_dlp(url):
-        yt_dlp_info = extract_yt_dlp_info(url)
-        async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
-            yield sound
-    else:
-        sound = Sound(name or "stream de audio", SoundType.URL, url)
-        yield sound
-
-
-async def generate_sounds_from_yt_dlp_info(ctx: Context, yt_dlp_info: Any) -> AsyncIterable[Sound]:
-    if yt_dlp_info is None:
-        return
-    entries = yt_dlp_info.get('entries')
-    if entries:  # This is a playlist or something similar
-        if len(entries) > 30:
-            await ctx.send(":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
-        for entry in entries[:30]:
-            async for sound in generate_sounds_from_url(ctx, entry.get('url'), entry.get('title')):
-                yield sound
-    else:
-        async for sound in generate_sounds_from_url(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
-            yield sound
-
-
-def get_user_voice_channel(ctx: Context):
-    try:
-        voice_state = ctx.message.author.voice
-        return voice_state.channel if voice_state is not None else None
-    except Exception:
-        print("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
-        traceback.print_exc()
 
 
 async def add_to_queue(ctx: Context, user_voice_channel: Optional[VoiceChannel], sound: Sound):
@@ -490,13 +387,12 @@ async def kiwi():
                     else:
                         sound_name = "ohvaya"
 
-                database.register_user_interaction("kiwi", "kiwi", sound_name)
-
                 if sound_name is not None:
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_client)
                     sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
                     print(f"kiwi >> Playing {sound_name}")
+                    database.register_user_interaction("kiwi", "kiwi", sound_name)
                     sound_queue.append(sound)
                     bot_vitals.start()
 
@@ -557,5 +453,5 @@ if __name__ == "__main__":
     channel_text = TextChannel()
     voice_channel = CurrentVoiceChannel()
     database = Database(get_username_key(), get_password_key(), get_database_key())
-    init(get_openai_key())
+    openai_client = OpenAiClient(get_openai_key())
     bot.run(get_bot_key())

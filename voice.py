@@ -1,7 +1,7 @@
 import os
 import traceback
 from collections.abc import AsyncIterable
-from typing import Optional
+from typing import Optional, Any
 
 from discord import FFmpegPCMAudio, VoiceClient, VoiceChannel
 from discord.ext.commands import Context
@@ -10,7 +10,7 @@ from bd import Database
 from utils import AUDIO_FOLDER_PATH
 from enum import Enum
 
-from youtube import generate_sounds_from_url
+from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info
 
 FFMPEG_OPTIONS_FOR_REMOTE_URL = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -93,7 +93,7 @@ def get_user_voice_channel(ctx: Context):
         traceback.print_exc()
 
 
-async def generate_sounds(ctx: Context, *args: str, database: Database) -> AsyncIterable[Sound]:
+async def generate_sounds(ctx: Context, database: Database, *args: str) -> AsyncIterable[Sound]:
     for arg in args:
         if arg.lower() == "lofi" or arg.lower() == "lo-fi":
             database.register_user_interaction(ctx.author.name, "play")
@@ -116,6 +116,33 @@ async def generate_sounds(ctx: Context, *args: str, database: Database) -> Async
 
             else:
                 await ctx.send(f"`{arg}` no existe. :frowning:")
+
+
+async def generate_sounds_from_url(ctx: Context, url: Optional[str], name: Optional[str]) -> AsyncIterable[Sound]:
+    if url is None:
+        pass
+    elif is_suitable_for_yt_dlp(url):
+        yt_dlp_info = extract_yt_dlp_info(url)
+        async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
+            yield sound
+    else:
+        sound = Sound(name or "stream de audio", SoundType.URL, url)
+        yield sound
+
+
+async def generate_sounds_from_yt_dlp_info(ctx: Context, yt_dlp_info: Any) -> AsyncIterable[Sound]:
+    if yt_dlp_info is None:
+        return
+    entries = yt_dlp_info.get('entries')
+    if entries:  # This is a playlist or something similar
+        if len(entries) > 30:
+            await ctx.send(":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
+        for entry in entries[:30]:
+            async for sound in generate_sounds_from_url(ctx, entry.get('url'), entry.get('title')):
+                yield sound
+    else:
+        async for sound in generate_sounds_from_url(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
+            yield sound
 
 
 if __name__ == "__main__":

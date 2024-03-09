@@ -1,3 +1,4 @@
+import logging as log
 import traceback
 from typing import Any, Optional
 
@@ -17,7 +18,7 @@ def extract_yt_dlp_info(url: str) -> Any:
             return ydl.extract_info(url, download=False)
 
     except Exception:
-        print("extract_yt_dlp_info >> Exception thrown when extracting info with yt-dlp.")
+        log.error("extract_yt_dlp_info >> Exception thrown when extracting info with yt-dlp.")
         traceback.print_exc()
 
 
@@ -32,7 +33,7 @@ def yt_search_and_extract_yt_dlp_info(search_query: str) -> Any:
             return ydl.extract_info(f"ytsearch:{search_query}", download=False).get('entries')[0]
 
     except Exception:
-        print("yt_search_and_extract_yt_dlp_info >> Exception thrown when extracting YouTube search info with yt-dlp.")
+        log.error("yt_search_and_extract_yt_dlp_info >> Exception thrown when extracting YouTube search info with yt-dlp.")
         traceback.print_exc()
 
 
@@ -48,7 +49,7 @@ def yt_music_search_and_get_first_result_url(search_query: str) -> Optional[str]
             return ydl.extract_info(f"https://music.youtube.com/search?q={search_query}", download=False).get('entries')[0].get('url')
 
     except Exception:
-        print("yt_music_search_and_get_first_result_url >> Exception thrown when extracting YouTube Music search info with yt-dlp.")
+        log.error("yt_music_search_and_get_first_result_url >> Exception thrown when extracting YouTube Music search info with yt-dlp.")
         traceback.print_exc()
 
 

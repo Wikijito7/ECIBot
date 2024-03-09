@@ -1,11 +1,12 @@
 from threading import Thread
+import logging as log
 
 def launch(suspend_fun):
     try:
-        print('launch >>> Launching thread')
+        log.info('launch >>> Launching thread')
         t = Thread(target=suspend_fun)
         t.start()
-        print('launch >>> Thread launched')
+        log.info('launch >>> Thread launched')
     
     except Exception as e:
-        print(f"launch >> There's an error launching the thread: {str(e)}")
+        log.warning(f"launch >> There's an error launching the thread: {str(e)}")

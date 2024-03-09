@@ -1,3 +1,4 @@
+import logging as log
 import os
 import traceback
 from collections.abc import AsyncIterable
@@ -89,7 +90,7 @@ def get_user_voice_channel(ctx: Context):
         return voice_state.channel if voice_state is not None else None
 
     except Exception:
-        print("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
+        log.error("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
         traceback.print_exc()
 
 

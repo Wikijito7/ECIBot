@@ -1,4 +1,5 @@
 import hashlib
+import logging as log
 import os
 import time
 from collections.abc import Callable
@@ -33,11 +34,11 @@ def get_loquendo_tts(text: str) -> Optional[str]:
         hash_digest = hashlib.md5(text_to_hash.encode()).hexdigest()
 
         url = f"https://cache-a.oddcast.com/c_fs/{hash_digest}.mp3?engine=2&language=2&voice=6&text={url_encoded_text}&useUTF8=1"
-        urlretrieve(url, file_name, report_progress)
+        urlretrieve(url, file_name)
         return file_name
 
     except Exception:
-        print("TTS >> There's an error with the Loquendo TTS, trying with Google tts")
+        log.warning("TTS >> There's an error with the Loquendo TTS, trying with Google tts")
         return get_google_tts(text)
 
 
@@ -49,11 +50,6 @@ def get_google_tts(text: str) -> str:
     speed = get_speed(text)
     file = change_speed(file_name, speed)
     return file
-
-
-def report_progress(block_num: int, block_size: int, total_size: int):
-    percent = int(block_num * block_size * 100 / total_size)
-    print("\r%d%%" % percent, end="")
 
 
 def generate_tts(text: str, listener: Callable[[str], Any]):
@@ -87,5 +83,5 @@ def change_speed(file_name: str, speed: float) -> str:
         return new_file_name
 
     except Exception:
-        print("TTS >> There's an error with the speed, trying with the original file")
+        log.warning("TTS >> There's an error with the speed, trying with the original file")
         return file_name

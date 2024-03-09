@@ -1,4 +1,4 @@
-import logging
+import logging as log
 import random
 from datetime import datetime, time
 from threading import Event
@@ -35,9 +35,9 @@ tts_event = Event()
 
 @bot.event
 async def on_ready():
-    print('{0.user} is alive!'.format(bot))
+    log.info('{0.user} is alive!'.format(bot))
     if is_debug_mode():
-        print(">> Debug mode is ON")
+        log.debug(">> Debug mode is ON")
         await bot.change_presence(status=discord.Status.idle, activity=discord.Game("~debug mode on"))
 
     else:
@@ -72,14 +72,14 @@ async def on_command_error(ctx: Context, exception: Exception):
     else:
         await ctx.send(":face_with_diagonal_mouth: Ha ocurrido un error no especificado al ejecutar el comando.")
 
-    logging.error("on_command_error >> Exception caught when running command", exc_info=exception)
+    log.error("on_command_error >> Exception caught when running command", exc_info=exception)
 
 
 @bot.event
 async def on_error(event_name: str, *args, **kwargs):
     if channel_text.get_text_channel() is not None:
         await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event_name}.")
-    print(args)
+    log.error(args)
 
 
 @bot.event
@@ -91,7 +91,7 @@ async def on_message(message: Message):
 
 @bot.event
 async def close():
-    print("Bot disconnected")
+    log.info("Bot disconnected")
 
 
 @bot.command(aliases=["c", "cl"])
@@ -321,9 +321,9 @@ def tts_listener(original_file: str):
 @tasks.loop(seconds=1, reconnect=True)
 async def bot_vitals():
     if voice_channel.get_voice_client() is None and voice_channel.get_voice_channel() is not None:
-        print("bot_vitals >> No hay ningún cliente conectado")
+        log.info("bot_vitals >> No hay ningún cliente conectado")
         voice_client = await get_voice_client(voice_channel)
-        print(f"bot_vitals >> Conectando a {voice_client}...")
+        log.info(f"bot_vitals >> Conectando a {voice_client}...")
         voice_channel.set_voice_client(voice_client)
 
     try:
@@ -347,11 +347,11 @@ async def bot_vitals():
             break
 
         else:
-            print("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola...")
+            log.info("bot_vitals >> Parece que se ha cerrado la conexión de manera inesperada, limpiando la cola...")
             await clear_bot(None)
 
     except Exception:
-        print("bot_vitals >> Something happened, stopping bot_vitals.")
+        log.warning("bot_vitals >> Something happened, stopping bot_vitals.")
         traceback.print_exc()
         await clear_bot(None)
 
@@ -391,19 +391,19 @@ async def kiwi():
                     voice_client = await eci_channel.connect()
                     voice_channel.set_voice_client(voice_client)
                     sound = Sound(sound_name, SoundType.FILE_SILENT, generate_audio_path(sound_name))
-                    print(f"kiwi >> Playing {sound_name}")
+                    log.info(f"kiwi >> Playing {sound_name}")
                     database.register_user_interaction("kiwi", "kiwi", sound_name)
                     sound_queue.append(sound)
                     bot_vitals.start()
 
             except discord.errors.ClientException as exc:
-                logging.error(">> Exception captured. Something happened at kiwi()", exc_info=exc)
+                log.error(">> Exception captured. Something happened at kiwi()", exc_info=exc)
 
 
 @tasks.loop(seconds=1)
 async def dalle_vitals():
     for result in dalle_results_queue:
-        print(f"dale_vitals >> Hay imágenes en la cola: {len(dalle_results_queue)} imágenes")
+        log.info(f"dale_vitals >> Hay imágenes en la cola: {len(dalle_results_queue)} imágenes")
         if result.get_response_type() == ResponseType.SUCCESS:
             with open(result.get_image(), "rb") as image_file:
                 await channel_text.get_text_channel().send(":e_mail: Imagen recibida:", file=discord.File(image_file, filename="dalle.png"))
@@ -439,7 +439,7 @@ async def clear_bot(voice_client: Optional[VoiceClient]):
             await voice_client.disconnect()
 
     except Exception:
-        print(">> Exception captured. voice_client wasn't connected or something happened at clear_bot()")
+        log.warning(">> Exception captured. voice_client wasn't connected or something happened at clear_bot()")
         traceback.print_exc()
     
     voice_channel.set_voice_client(None)

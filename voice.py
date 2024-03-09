@@ -93,24 +93,21 @@ def get_user_voice_channel(ctx: Context):
         traceback.print_exc()
 
 
-async def generate_sounds(ctx: Context, database: Database, *args: str) -> AsyncIterable[Sound]:
+async def generate_sounds(ctx: Context, *args: str) -> AsyncIterable[Sound]:
     for arg in args:
         if arg.lower() == "lofi" or arg.lower() == "lo-fi":
-            database.register_user_interaction(ctx.author.name, "play")
             url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
             name = "Lofi 24/7"
             yield Sound(name, SoundType.URL, url)
 
         elif arg.startswith("http://") or arg.startswith("https://"):
             await ctx.send(":clock10: Obteniendo información...")
-            database.register_user_interaction(ctx.author.name, "play")
             async for sound in generate_sounds_from_url(ctx, arg, None):
                 yield sound
 
         else:
             audio = generate_audio_path(arg)
             if os.path.exists(audio):
-                database.register_user_interaction(ctx.author.name, "play", arg)
                 sound = Sound(arg, SoundType.FILE, audio)
                 yield sound
 

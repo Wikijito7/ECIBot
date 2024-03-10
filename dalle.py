@@ -4,6 +4,7 @@ import time
 from enum import Enum
 from io import BytesIO
 from typing import Callable, Any, Optional
+import logging as log
 
 import requests
 from PIL import Image
@@ -44,7 +45,7 @@ def remove_image_from_memory(image_name: str):
         os.remove(os.path.join(image_name))
 
     except Exception as e:
-        print(f"remove_image_from_memory >> Error al intentar borrar la imagen {image_name}: {str(e)}")
+        log.error(f"remove_image_from_memory >> Error al intentar borrar la imagen {image_name}: {str(e)}")
 
 
 # Doing a similar image proccesing as in https://github.com/borisdayma/dalle-mini/blob/main/app/gradio/backend.py
@@ -52,10 +53,10 @@ def generate_images(text: str, listener: Callable[[DalleImages], Any]):
     try:
         url = "https://bf.dallemini.ai/generate"
         data = {"prompt": text}
-        print("generate_images >> Realizando petición POST a Dall-e Mini")
+        log.info("generate_images >> Realizando petición POST a Dall-e Mini")
         response = requests.post(url, json=data)
         if response.status_code == 200:
-            print("generate_images >> Petición POST a Dall-e Mini realizada con éxito")
+            log.info("generate_images >> Petición POST a Dall-e Mini realizada con éxito")
             json = response.json()
             images = json["images"]
             images = [Image.open(BytesIO(base64.b64decode(img.replace("\\n", "\n")))) for img in images]
@@ -64,14 +65,14 @@ def generate_images(text: str, listener: Callable[[DalleImages], Any]):
             listener(result)
 
         elif response.status_code == 503:
-            print("generate_images >> Servicio 503, intentando de nuevo...")
+            log.warning("generate_images >> Servicio 503, intentando de nuevo...")
             generate_images(text, listener)
 
         else:
             listener(DalleImages(ResponseType.FAILURE, None))
     
     except Exception as e:
-        print(f"generate_images >> Exception: {str(e)}")
+        log.error(f"generate_images >> Exception: {str(e)}")
         listener(DalleImages(ResponseType.FAILURE, None))
 
 

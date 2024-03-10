@@ -5,6 +5,7 @@ from typing import Optional
 from pymongo import MongoClient
 
 from utils import is_database_enabled
+from voice import Sound, SoundType
 
 MONGO_DB_PROTOCOL = "mongodb://"
 DATABASE_NAME = "ecibot"
@@ -18,6 +19,10 @@ class Database:
             self.__client = MongoClient(f"{MONGO_DB_PROTOCOL}{user}:{password}@{url}/")
             self.__database = self.__client[DATABASE_NAME]
             self.__stats_collection = self.__database[STATS_COLLECTION]
+
+    def register_user_interaction_play_sound(self, username: str, sound: Sound):
+        sound_name = sound.get_name() if sound.get_sound_type() == SoundType.FILE else None
+        self.register_user_interaction(username, "play", sound_name)
 
     def register_user_interaction(self, username: str, command: str, sound: Optional[str] = None) -> None:
         try:

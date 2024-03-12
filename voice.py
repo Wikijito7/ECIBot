@@ -7,7 +7,6 @@ from typing import Optional, Any
 from discord import FFmpegPCMAudio, VoiceClient, VoiceChannel
 from discord.ext.commands import Context
 
-from bd import Database
 from utils import AUDIO_FOLDER_PATH
 from enum import Enum
 

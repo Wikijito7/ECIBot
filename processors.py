@@ -48,22 +48,21 @@ async def process_link(message: Message, author_id: int):
     if "https://www.twitter.com" in message.content.lower():
         await send_fixed_up_twitter(message, "https://www.twitter")
 
-# TODO: Apply these lines once instafix is up
-#    if "https://instagram.com" in message.content.lower():
-#        await send_fixed_up_instagram(message, "https://instagram")
-#
-#    if "https://www.instagram.com" in message.content.lower():
-#        await send_fixed_up_instagram(message, "https://www.instagram")
+    if "https://instagram.com" in message.content.lower():
+        await send_fixed_up_instagram(message, "https://instagram")
+
+    if "https://www.instagram.com" in message.content.lower():
+        await send_fixed_up_instagram(message, "https://www.instagram")
 
 
 async def send_fixed_up_twitter(message: Message, content: str):
-    fixed_tweet = message.content.lower().replace(content, "https://fixupx").split("?")[0]
+    fixed_tweet = message.content.replace(content, "https://fixupx").split("?")[0]
     await message.channel.send(f"Tweet enviado por {message.author.mention} con el enlace arreglado:\n{fixed_tweet}")
     await message.delete()
 
 
 async def send_fixed_up_instagram(message: Message, content: str):
-    fixed_insta = message.content.lower().replace(content, "https://ddinstagram").split("?")[0]
+    fixed_insta = message.content.replace(content, "https://ddinstagram").split("?")[0]
     await message.channel.send(
         f"Publicación enviada por {message.author.mention} con el enlace arreglado:\n{fixed_insta}")
     await message.delete()

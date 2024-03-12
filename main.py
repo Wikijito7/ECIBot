@@ -38,8 +38,8 @@ tts_event = Event()
 async def on_ready():
     log.info('{0.user} is alive!'.format(bot))
     if is_debug_mode():
-        log.debug(">> Debug mode is ON")
         log.getLogger().setLevel(log.DEBUG)
+        log.debug(">> Debug mode is ON")
         await bot.change_presence(status=discord.Status.idle, activity=discord.Game("~debug mode on"))
 
     else:
@@ -227,8 +227,7 @@ async def poll(ctx: Context, *args: str):
 
 
 @bot.command(aliases=["a", "preguntar", "pr"])
-async def ask(ctx: Context, *, args: str = None):
-    text = " ".join(args) if args else ""
+async def ask(ctx: Context, *, text: str = ""):
     database.register_user_interaction(ctx.author.name, "ask")
     await ctx.send(":clock10: Generando respuesta...")
     response = openai_client.generate_response(text)

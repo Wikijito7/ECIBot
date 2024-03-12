@@ -7,6 +7,7 @@ import discord
 from discord import Message, Guild
 from discord.ext import commands
 from discord.ext import tasks
+from bd import Database
 
 from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_memory, DalleImages
 from ai import *
@@ -37,10 +38,12 @@ tts_event = Event()
 async def on_ready():
     log.info('{0.user} is alive!'.format(bot))
     if is_debug_mode():
+        log.getLogger().setLevel(log.DEBUG)
         log.debug(">> Debug mode is ON")
         await bot.change_presence(status=discord.Status.idle, activity=discord.Game("~debug mode on"))
 
     else:
+        log.getLogger().setLevel(log.INFO)
         await bot.change_presence(activity=discord.Game("~bip-bop"))
         kiwi.start()
 
@@ -78,7 +81,7 @@ async def on_command_error(ctx: Context, exception: Exception):
 @bot.event
 async def on_error(event_name: str, *args, **kwargs):
     if channel_text.get_text_channel() is not None:
-        await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event_name}.")
+        await channel_text.get_text_channel().send(f"Ha ocurrido un error con {event_name}, {args}, {kwargs}.")
     log.error(args)
 
 
@@ -224,8 +227,7 @@ async def poll(ctx: Context, *args: str):
 
 
 @bot.command(aliases=["a", "preguntar", "pr"])
-async def ask(ctx: Context, *args: str):
-    text = " ".join(args)
+async def ask(ctx: Context, *, text: str = ""):
     database.register_user_interaction(ctx.author.name, "ask")
     await ctx.send(":clock10: Generando respuesta...")
     response = openai_client.generate_response(text)
@@ -235,7 +237,8 @@ async def ask(ctx: Context, *args: str):
             text_start = MAX_RESPONSE_CHARACTERS * x
             text_end = MAX_RESPONSE_CHARACTERS * (x + 1)
             await ctx.send(f"```{response[text_start:text_end]}```")
-        await tts(ctx, response)
+        tts_message = f"{text} {response}"
+        await tts(ctx, tts_message)
 
 
 @bot.command(aliases=["yt"], require_var_positional=True)

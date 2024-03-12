@@ -228,7 +228,7 @@ async def poll(ctx: Context, *args: str):
 
 @bot.command(aliases=["a", "preguntar", "pr"])
 async def ask(ctx: Context, *, args: str = None):
-    text = " ".join(args)
+    text = " ".join(args) if args else ""
     database.register_user_interaction(ctx.author.name, "ask")
     await ctx.send(":clock10: Generando respuesta...")
     response = openai_client.generate_response(text)

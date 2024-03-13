@@ -47,9 +47,9 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!confetti <number>`: Plays the specified number of random Confetti songs. Alternative command: !co.
 
 ## TODO:
-* [ ] Add more commands.
-* [ ] Add tts messages to queue.
-* [ ] Create log system.
+* [X] Add more commands.
+* [X] Add tts messages to queue.
+* [X] Create log system.
 * [ ] Add more logs.
 * [ ] Add language support.
 * [ ] Create lang file.

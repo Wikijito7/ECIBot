@@ -1,4 +1,4 @@
-import logging as log
+import asyncio
 import random
 from datetime import datetime, time
 from threading import Event
@@ -16,7 +16,7 @@ from dalle import ResponseType, generate_images, clear_dalle, remove_image_from_
 from guild_queue import add_to_queue, get_guild_queue
 from processors import process_link, process_reactions
 from threads import launch
-from tts import generate_tts, tts_base_url
+from tts import generate_tts
 from utils import *
 from voice import *
 from youtube import *
@@ -300,9 +300,8 @@ def dalle_listener(result: DalleImages):
 
 
 def tts_listener(guild_id: int, vocal_channel: VocalGuildChannel, messageable: Messageable, original_file: str):
-    filename = original_file.replace(tts_base_url, "").replace(".mp3", "")
-    sound = Sound(filename, SoundType.TTS, original_file)
-    add_to_queue(guild_id, vocal_channel, messageable, sound)  # TODO await
+    sound = Sound("mensaje tts", SoundType.TTS, original_file)
+    asyncio.run_coroutine_threadsafe(add_to_queue(guild_id, vocal_channel, messageable, sound), bot.loop)
 
 
 @tasks.loop(minutes=1)

@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import traceback
 
 AUDIO_FOLDER_PATH = "./audio"
@@ -79,6 +80,11 @@ def generate_sound_list_format(sounds: list[str]) -> list[list[str]]:
     return list_sounds
 
 
+def check_dir(dir_path: str):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+
 def remove_file(path: str):
     try:
         if os.path.exists(path):
@@ -90,6 +96,14 @@ def remove_file(path: str):
 def remove_files(paths: list[str]):
     for path in paths:
         remove_file(path)
+
+
+def remove_folder(dir_path: str):
+    try:
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+    except Exception:
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

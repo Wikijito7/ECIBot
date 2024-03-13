@@ -6,6 +6,7 @@ import yt_dlp
 
 YT_DLP_FORMATS = 'bestaudio/251/250/249/233/234/hls-audio-128000-Audio/m4a/worstaudio/worst'
 YT_DLP_EXTRACTORS = yt_dlp.extractor.gen_extractors()
+MAX_PLAYLIST_ITEMS = 30
 
 
 def extract_yt_dlp_info(url: str) -> Any:
@@ -13,6 +14,7 @@ def extract_yt_dlp_info(url: str) -> Any:
         ydl_opts = {
             'format': YT_DLP_FORMATS,
             'extract_flat': True,  # Don't try to obtain information from nested content (very slow in long playlists)
+            'playlistend': MAX_PLAYLIST_ITEMS + 1,  # Limit max playlists items to avoid excessive pagination and add one more to be able to check if list was too long and send message
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(url, download=False)

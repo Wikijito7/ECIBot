@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 
 AUDIO_FOLDER_PATH = "./audio"
 
@@ -76,6 +77,19 @@ def generate_sound_list_format(sounds: list[str]) -> list[list[str]]:
         pos = x % 3
         list_sounds[pos].append(sound)
     return list_sounds
+
+
+def remove_file(path: str):
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        traceback.print_exc()
+
+
+def remove_files(paths: list[str]):
+    for path in paths:
+        remove_file(path)
 
 
 if __name__ == "__main__":

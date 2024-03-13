@@ -8,6 +8,8 @@ from urllib.parse import quote
 from urllib.request import urlretrieve
 
 import ffmpy
+from discord.abc import Messageable
+from discord.channel import VocalGuildChannel
 from gtts import gTTS
 
 tts_base_url = "./tts/"
@@ -16,12 +18,6 @@ tts_base_url = "./tts/"
 def check_base_dir():
     if not os.path.exists(tts_base_url):
         os.makedirs(tts_base_url)
-
-
-def clear_tts():
-    check_base_dir()
-    for file in os.listdir(tts_base_url):
-        os.remove(os.path.join(tts_base_url, file))
 
 
 def get_loquendo_tts(text: str) -> Optional[str]:
@@ -52,14 +48,14 @@ def get_google_tts(text: str) -> str:
     return file
 
 
-def generate_tts(text: str, listener: Callable[[str], Any]):
+def generate_tts(text: str, guild_id: int, vocal_channel: VocalGuildChannel, messageable: Messageable, listener: Callable[[int, VocalGuildChannel, Messageable, str], Any]):
     if len(text) > 600:
         audio = get_google_tts(text)
 
     else:
         audio = get_loquendo_tts(text)
 
-    listener(audio)
+    listener(guild_id, vocal_channel, messageable, audio)
 
 
 def get_speed(text: str) -> float:
@@ -80,6 +76,7 @@ def change_speed(file_name: str, speed: float) -> str:
         new_file_name = f"{tts_base_url}tts_{str(time.time())}.mp3"
         ff = ffmpy.FFmpeg(inputs={file_name: None}, outputs={new_file_name: f"-filter:a atempo={speed}"})
         ff.run()
+        #  TODO try this remove_file(file_name)
         return new_file_name
 
     except Exception:

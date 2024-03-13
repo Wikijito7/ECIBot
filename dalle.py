@@ -8,6 +8,7 @@ import logging as log
 
 import requests
 from PIL import Image
+from discord.abc import Messageable
 
 DALLE_FOLDER_PATH = "./dalle"
 
@@ -18,15 +19,19 @@ class ResponseType(Enum):
 
 
 class DalleImages:
-    def __init__(self, response_type: ResponseType, image: Optional[str]):
+    def __init__(self, response_type: ResponseType, image: Optional[str], messageable: Messageable):
         self.__response_type = response_type
         self.__image = image
+        self.__messageable = messageable
 
     def get_response_type(self) -> ResponseType:
         return self.__response_type
 
     def get_image(self) -> Optional[str]:
         return self.__image
+
+    def get_messageable(self) -> Messageable:
+        return self.__messageable
 
 
 def check_dalle_dir():
@@ -49,7 +54,7 @@ def remove_image_from_memory(image_name: str):
 
 
 # Doing a similar image proccesing as in https://github.com/borisdayma/dalle-mini/blob/main/app/gradio/backend.py
-def generate_images(text: str, listener: Callable[[DalleImages], Any]):
+def generate_images(text: str, listener: Callable[[DalleImages], Any], messageable: Messageable):
     try:
         url = "https://bf.dallemini.ai/generate"
         data = {"prompt": text}
@@ -61,19 +66,19 @@ def generate_images(text: str, listener: Callable[[DalleImages], Any]):
             images = json["images"]
             images = [Image.open(BytesIO(base64.b64decode(img.replace("\\n", "\n")))) for img in images]
             check_dalle_dir()
-            result = DalleImages(ResponseType.SUCCESS, generate_image_collage(images))
+            result = DalleImages(ResponseType.SUCCESS, generate_image_collage(images), messageable)
             listener(result)
 
         elif response.status_code == 503:
             log.warning("generate_images >> Servicio 503, intentando de nuevo...")
-            generate_images(text, listener)
+            generate_images(text, listener, messageable)
 
         else:
-            listener(DalleImages(ResponseType.FAILURE, None))
+            listener(DalleImages(ResponseType.FAILURE, None, messageable))
     
     except Exception as e:
         log.error(f"generate_images >> Exception: {str(e)}")
-        listener(DalleImages(ResponseType.FAILURE, None))
+        listener(DalleImages(ResponseType.FAILURE, None, messageable))
 
 
 def generate_image_collage(images: list[Image]) -> str:

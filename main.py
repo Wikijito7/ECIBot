@@ -212,6 +212,9 @@ async def disconnect(ctx: Context):
         voice_client = guild.voice_client
         if isinstance(voice_client, VoiceClient):
             database.register_user_interaction(ctx.author.name, "disconnect")
+            guild_queue = get_guild_queue(guild.id)
+            if guild_queue is not None:
+                guild_queue.clear_sound_queue()
             await stop_and_disconnect(voice_client)
             await ctx.send(":robot: Desconectando...")
     else:

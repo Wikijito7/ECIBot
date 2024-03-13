@@ -35,7 +35,7 @@ class GuildQueue:
     def add_sound_to_queue(self, sound: Sound):
         self.__sound_queue.append(sound)
 
-    def clear_queue(self):
+    def clear_sound_queue(self):
         self.__sound_queue.clear()
 
     def get_voice_client(self) -> Optional[VoiceClient]:

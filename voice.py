@@ -10,7 +10,7 @@ from discord.ext.commands import Context
 from utils import AUDIO_FOLDER_PATH
 from enum import Enum
 
-from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info
+from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info, MAX_PLAYLIST_ITEMS
 
 FFMPEG_OPTIONS_FOR_REMOTE_URL = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -132,10 +132,13 @@ async def generate_sounds_from_yt_dlp_info(ctx: Context, yt_dlp_info: Any) -> As
         return
     entries = yt_dlp_info.get('entries')
     if entries:  # This is a playlist or something similar
-        if len(entries) > 30:
-            await ctx.send(":warning: La lista encontrada es demasiado larga, solo se añadirán los primeros 30 elementos.")
-        for entry in entries[:30]:
-            async for sound in generate_sounds_from_url(ctx, entry.get('url'), entry.get('title')):
+        playlist_title = yt_dlp_info.get('title')
+        if playlist_title is not None:
+            await ctx.send(f":page_with_curl: Añadiendo la lista `{playlist_title}`...")
+        if len(entries) > MAX_PLAYLIST_ITEMS:
+            await ctx.send(":warning: La lista es demasiado larga, solo se añadirán los primeros 30 elementos.")
+        for entry in entries[:MAX_PLAYLIST_ITEMS]:
+            async for sound in generate_sounds_from_yt_dlp_info(ctx, entry):
                 yield sound
     else:
         async for sound in generate_sounds_from_url(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title')):

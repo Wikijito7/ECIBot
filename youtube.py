@@ -1,8 +1,9 @@
 import logging as log
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 import yt_dlp
+from yt_dlp.extractor.youtube import YoutubeIE
 
 YT_DLP_FORMATS = 'bestaudio/251/250/249/233/234/hls-audio-128000-Audio/m4a/worstaudio/worst'
 YT_DLP_EXTRACTORS = yt_dlp.extractor.gen_extractors()
@@ -39,7 +40,7 @@ def yt_search_and_extract_yt_dlp_info(search_query: str) -> Any:
         traceback.print_exc()
 
 
-def yt_music_search_and_get_first_result_url(search_query: str) -> Optional[str]:
+def yt_music_search_and_extract_yt_dlp_info(search_query: str) -> Any:
     try:
         ydl_opts = {
             'format': YT_DLP_FORMATS,
@@ -48,7 +49,7 @@ def yt_music_search_and_get_first_result_url(search_query: str) -> Optional[str]
             'playlist_items': '1',  # Only get first item in lists
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            return ydl.extract_info(f"https://music.youtube.com/search?q={search_query}", download=False).get('entries')[0].get('url')
+            return ydl.extract_info(f"https://music.youtube.com/search?q={search_query}", download=False).get('entries')[0]
 
     except Exception:
         log.error("yt_music_search_and_get_first_result_url >> Exception thrown when extracting YouTube Music search info with yt-dlp.")
@@ -60,3 +61,7 @@ def is_suitable_for_yt_dlp(url: str) -> bool:
         if extractor.suitable(url) and extractor.IE_NAME != 'generic':
             return True
     return False
+
+
+def is_youtube_url(url: str) -> bool:
+    return YoutubeIE.suitable(url)

@@ -49,9 +49,9 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!ytmusicmix <search query or url>`: Plays a mix generated from the given YouTube Music search or url. Alternative command: !ytmmix and !youtubemusicmix 
 
 ## TODO:
-* [ ] Add more commands.
-* [ ] Add tts messages to queue.
-* [ ] Create log system.
+* [X] Add more commands.
+* [X] Add tts messages to queue.
+* [X] Create log system.
 * [ ] Add more logs.
 * [ ] Add language support.
 * [ ] Create lang file.

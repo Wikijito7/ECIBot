@@ -1,5 +1,6 @@
-from threading import Thread
 import logging as log
+from threading import Thread
+
 
 def launch(suspend_fun):
     try:

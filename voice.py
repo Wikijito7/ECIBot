@@ -2,38 +2,19 @@ import logging as log
 import os
 import traceback
 from collections.abc import AsyncIterable
+from enum import Enum
 from typing import Optional, Any
 
-from discord import FFmpegPCMAudio, VoiceClient, VoiceChannel
+from discord import FFmpegPCMAudio, VoiceClient, Member, Message
 from discord.ext.commands import Context
 
 from utils import AUDIO_FOLDER_PATH
-from enum import Enum
-
 from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info, MAX_PLAYLIST_ITEMS
 
 FFMPEG_OPTIONS_FOR_REMOTE_URL = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
     'options': '-vn'
 }
-
-
-class CurrentVoiceChannel:
-    def __init__(self):
-        self.__voice_channel = None
-        self.__voice_client = None
-
-    def get_voice_channel(self) -> Optional[VoiceChannel]:
-        return self.__voice_channel
-
-    def set_voice_channel(self, voice_channel: Optional[VoiceChannel]):
-        self.__voice_channel = voice_channel
-
-    def get_voice_client(self) -> Optional[VoiceClient]:
-        return self.__voice_client
-
-    def set_voice_client(self, voice_client: Optional[VoiceClient]):
-        self.__voice_client = voice_client
 
 
 class SoundType(Enum):
@@ -59,6 +40,18 @@ class Sound:
         return self.__sound_type
 
 
+async def audio_play_prechecks(message: Message) -> bool:
+    if message.guild is None or not isinstance(message.author, Member):
+        await message.channel.send("No estás conectado a un servidor :angry:")
+        return False
+
+    if message.author.voice is None or message.author.voice.channel is None:
+        await message.channel.send("No estás en ningún canal conectado :confused:")
+        return False
+
+    return True
+
+
 def generate_audio_path(name: str) -> str:
     return f"{AUDIO_FOLDER_PATH}/{name}.mp3"
 
@@ -75,21 +68,14 @@ async def play_sound(client: Optional[VoiceClient], sound: Optional[Sound]):
         client.play(source=get_audio(sound))
 
 
-async def get_voice_client(voice_channel: CurrentVoiceChannel) -> VoiceClient:
-    if voice_channel.get_voice_client() is not None:
-        return voice_channel.get_voice_client()
-
-    else:
-        return await voice_channel.get_voice_channel().connect()        
-
-
-def get_user_voice_channel(ctx: Context):
+async def stop_and_disconnect(voice_client: Optional[VoiceClient]):
     try:
-        voice_state = ctx.message.author.voice
-        return voice_state.channel if voice_state is not None else None
+        if voice_client is not None:
+            voice_client.stop()
+            await voice_client.disconnect()
 
     except Exception:
-        log.error("get_user_voice_channel >> Exception thrown when getting voice channel from context.")
+        log.error("stop_and_disconnect >> Exception captured. voice_client wasn't connected or something happened.")
         traceback.print_exc()
 
 

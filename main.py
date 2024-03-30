@@ -323,7 +323,8 @@ async def youtubemusicmix(ctx: Context, *, arg: str = ""):
         else:
             await ctx.send(f":no_entry_sign: Solo se puede crear un mix de una canción de YouTube.")
     elif len(arg) > 0:
-        yt_dlp_info = yt_music_search_and_extract_yt_dlp_info(arg)
+        yt_music_search_query = arg.rsplit("#", 1)[0] + "#songs"
+        yt_dlp_info = yt_music_search_and_extract_yt_dlp_info(yt_music_search_query)
         await play_youtube_mix(ctx, yt_dlp_info)
 
 

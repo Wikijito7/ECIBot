@@ -45,6 +45,8 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!search <prompt>`: Search custom sounds that contains given prompt. Alternative command: !b y !buscar.
 * `!dalle <prompt>`: Generates 9 images in a 3 by 3 array by sending the given prompt to Dall-e mini API. It may take up to a minute to get the images from the API. Alternative command: !d.
 * `!confetti <number>`: Plays the specified number of random Confetti songs. Alternative command: !co.
+* `!ytmix <search query or url>`: Plays a mix generated from the given YouTube search or url. Alternative command: !youtubemix
+* `!ytmusicmix <search query or url>`: Plays a mix generated from the given YouTube Music search or url. Alternative command: !ytmmix and !youtubemusicmix 
 
 ## TODO:
 * [X] Add more commands.

@@ -123,6 +123,8 @@ async def help(ctx: Context):
     embed_msg.add_field(name="!buscar <nombre>", value="Busca sonidos que contengan el argumento añadido. También funciona con !b y !search.", inline=False)
     embed_msg.add_field(name="!dalle <texto>", value="Genera imagenes según el texto que se le ha introducido. También funciona con !d.", inline=False)
     embed_msg.add_field(name="!confetti <número>", value="Reproduce el número especificado de canciones aleatorias de Confetti. También funciona con !co.", inline=False)
+    embed_msg.add_field(name="!ytmix <búsqueda o url>", value="Reproduce un mix generado a partir de la búsqueda o url de YouTube introducida. También funciona con !youtubemix.", inline=False)
+    embed_msg.add_field(name="!ytmusicmix <búsqueda o url>", value="Reproduce un mix generado a partir de la búsqueda o url de YouTube Music introducida. También funciona con !ytmmix y !youtubemusicmix.", inline=False)
 
     await ctx.send(embed=embed_msg)
 
@@ -290,9 +292,48 @@ async def youtubemusic(ctx: Context, *args: str):
     if "#" not in search_query:
         search_query += "#songs"
 
-    result_url = yt_music_search_and_get_first_result_url(search_query)
+    result_url = yt_music_search_and_extract_yt_dlp_info(search_query).get('url')
     if result_url is not None:
         await play(ctx, result_url)
+    else:
+        await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
+
+
+@bot.command(aliases=["ytmix"], require_var_positional=True)
+async def youtubemix(ctx: Context, *, arg: str = ""):
+    database.register_user_interaction(ctx.author.name, "youtubemix")
+    if arg.startswith("http://") or arg.startswith("https://"):
+        if is_youtube_url(arg):
+            yt_dlp_info = extract_yt_dlp_info(arg)
+            await play_youtube_mix(ctx, yt_dlp_info)
+        else:
+            await ctx.send(f":no_entry_sign: Solo se puede crear un mix de un vídeo de YouTube.")
+    elif len(arg) > 0:
+        yt_dlp_info = yt_search_and_extract_yt_dlp_info(arg)
+        await play_youtube_mix(ctx, yt_dlp_info)
+
+
+@bot.command(aliases=["ytmmix", "ytmusicmix"], require_var_positional=True)
+async def youtubemusicmix(ctx: Context, *, arg: str = ""):
+    database.register_user_interaction(ctx.author.name, "youtubemusicmix")
+    if arg.startswith("http://") or arg.startswith("https://"):
+        if is_youtube_url(arg):
+            yt_dlp_info = extract_yt_dlp_info(arg)
+            await play_youtube_mix(ctx, yt_dlp_info)
+        else:
+            await ctx.send(f":no_entry_sign: Solo se puede crear un mix de una canción de YouTube.")
+    elif len(arg) > 0:
+        yt_music_search_query = arg.rsplit("#", 1)[0] + "#songs"
+        yt_dlp_info = yt_music_search_and_extract_yt_dlp_info(yt_music_search_query)
+        await play_youtube_mix(ctx, yt_dlp_info)
+
+
+async def play_youtube_mix(ctx: Context, yt_dlp_info: Any):
+    if yt_dlp_info is not None and yt_dlp_info.get('id') is not None:
+        title = yt_dlp_info.get('title')
+        video_id = yt_dlp_info.get('id')
+        await ctx.send(f":twisted_rightwards_arrows: Añadiendo el mix de `{title}`...")
+        await play(ctx, f"https://www.youtube.com/watch?v={video_id}&list=RD{video_id}")
     else:
         await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
 

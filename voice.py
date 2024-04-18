@@ -3,9 +3,10 @@ import os
 import traceback
 from collections.abc import AsyncIterable
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
-from discord import FFmpegPCMAudio, VoiceClient, Member, Message
+from discord import FFmpegPCMAudio, VoiceClient, Member, Message, Guild
+from discord.abc import Messageable
 from discord.ext.commands import Context
 
 from utils import AUDIO_FOLDER_PATH
@@ -40,13 +41,13 @@ class Sound:
         return self.__sound_type
 
 
-async def audio_play_prechecks(message: Message) -> bool:
-    if message.guild is None or not isinstance(message.author, Member):
-        await message.channel.send("No estás conectado a un servidor :angry:")
+async def audio_play_prechecks(guild: Optional[Guild], author: Member, on_error: Callable[[str], Any]) -> bool:
+    if guild is None or not isinstance(author, Member):
+        await on_error("No estás conectado a un servidor :angry:")
         return False
 
-    if message.author.voice is None or message.author.voice.channel is None:
-        await message.channel.send("No estás en ningún canal conectado :confused:")
+    if author.voice is None or author.voice.channel is None:
+        await on_error("No estás en ningún canal conectado :confused:")
         return False
 
     return True
@@ -79,7 +80,7 @@ async def stop_and_disconnect(voice_client: Optional[VoiceClient]):
         traceback.print_exc()
 
 
-async def generate_sounds(ctx: Context, *args: str) -> AsyncIterable[Sound]:
+async def generate_sounds(channel: Messageable, *args: str) -> AsyncIterable[Sound]:
     for arg in args:
         if arg.lower() == "lofi" or arg.lower() == "lo-fi":
             url = "http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
@@ -87,8 +88,8 @@ async def generate_sounds(ctx: Context, *args: str) -> AsyncIterable[Sound]:
             yield Sound(name, SoundType.URL, url)
 
         elif arg.startswith("http://") or arg.startswith("https://"):
-            await ctx.send(":clock10: Obteniendo información...")
-            async for sound in generate_sounds_from_url(ctx, arg, None):
+            await channel.send(":clock10: Obteniendo información...")
+            async for sound in generate_sounds_from_url(channel, arg, None):
                 yield sound
 
         else:
@@ -98,15 +99,15 @@ async def generate_sounds(ctx: Context, *args: str) -> AsyncIterable[Sound]:
                 yield sound
 
             else:
-                await ctx.send(f"`{arg}` no existe. :frowning:")
+                await channel.send(f"`{arg}` no existe. :frowning:")
 
 
-async def generate_sounds_from_url(ctx: Context, url: Optional[str], name: Optional[str]) -> AsyncIterable[Sound]:
+async def generate_sounds_from_url(channel: Messageable, url: Optional[str], name: Optional[str]) -> AsyncIterable[Sound]:
     if url is None:
         pass
     elif is_suitable_for_yt_dlp(url):
         yt_dlp_info = extract_yt_dlp_info(url)
-        async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
+        async for sound in generate_sounds_from_yt_dlp_info(channel, yt_dlp_info):
             yield sound
     else:
         sound = Sound(name or "stream de audio", SoundType.URL, url)

@@ -114,21 +114,21 @@ async def generate_sounds_from_url(channel: Messageable, url: Optional[str], nam
         yield sound
 
 
-async def generate_sounds_from_yt_dlp_info(ctx: Context, yt_dlp_info: Any) -> AsyncIterable[Sound]:
+async def generate_sounds_from_yt_dlp_info(channel: Messageable, yt_dlp_info: Any) -> AsyncIterable[Sound]:
     if yt_dlp_info is None:
         return
     entries = yt_dlp_info.get('entries')
     if entries:  # This is a playlist or something similar
         playlist_title = yt_dlp_info.get('title')
         if playlist_title is not None:
-            await ctx.send(f":page_with_curl: Añadiendo la lista `{playlist_title}`...")
+            await channel.send(f":page_with_curl: Añadiendo la lista `{playlist_title}`...")
         if len(entries) > MAX_PLAYLIST_ITEMS:
-            await ctx.send(":warning: La lista es demasiado larga, solo se añadirán los primeros 30 elementos.")
+            await channel.send(":warning: La lista es demasiado larga, solo se añadirán los primeros 30 elementos.")
         for entry in entries[:MAX_PLAYLIST_ITEMS]:
-            async for sound in generate_sounds_from_yt_dlp_info(ctx, entry):
+            async for sound in generate_sounds_from_yt_dlp_info(channel, entry):
                 yield sound
     else:
-        async for sound in generate_sounds_from_url(ctx, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
+        async for sound in generate_sounds_from_url(channel, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
             yield sound
 
 

@@ -4,7 +4,8 @@ from datetime import datetime, time
 from threading import Event
 
 import discord
-from discord import Interaction
+from discord import Interaction, app_commands
+from discord.app_commands import Group
 from discord.channel import VocalGuildChannel
 from discord.ext import commands
 from discord.ext import tasks
@@ -12,6 +13,7 @@ from discord.ext import tasks
 from ai import *
 from bd import Database
 from commands.ask import on_ask
+from commands.confetti import on_confetti
 from commands.dalle_command import on_dalle
 from commands.disconnect import on_disconnect
 from commands.play import on_play
@@ -20,6 +22,8 @@ from commands.say import on_tts
 from commands.search import on_search_executed
 from commands.sonidos import on_sounds_requested
 from commands.stop import on_stop
+from commands.youtube_mix import on_youtube_music_mix, on_youtube_mix
+from commands.youtube_search import on_search_in_youtube, on_search_in_youtube_music
 from dalle import ResponseType, clear_dalle, remove_image_from_memory, DalleImages
 from guild_queue import add_to_queue
 from processors import process_link, process_reactions
@@ -36,6 +40,8 @@ dalle_results_queue: list[DalleImages] = []
 max_number = 10000
 kiwi_chance = 500
 dalle_event = Event()
+search_group = Group(name="search", description="Busca el argumento en el lugar indicado.")
+mix_group = Group(name="mix", description="Reproduce un mix generado a partir de la búsqueda o url introducida.")
 
 
 @bot.event
@@ -49,6 +55,8 @@ async def on_ready():
         log.getLogger().setLevel(log.INFO)
         await bot.change_presence(activity=discord.Game("~bip-bop"))
         kiwi.start()
+    bot.tree.add_command(search_group)
+    bot.tree.add_command(mix_group)
     await bot.tree.sync()
     log.info(f"{bot.user} is alive!")
     sdos = bot.get_guild(689108711452442667)
@@ -164,7 +172,7 @@ async def sonidos(interaction: Interaction):
 
 
 @bot.command(aliases=["buscar", "b"])
-async def search(ctx: Context, arg: str):
+async def search_legacy(ctx: Context, arg: str):
     await on_search_executed(
         arg,
         ctx.author,
@@ -174,7 +182,8 @@ async def search(ctx: Context, arg: str):
     )
 
 
-@bot.tree.command(name="search", description="Busca sonidos que contengan el argumento.")
+@search_group.command(name="local", description="Busca sonidos que contengan el argumento.")
+@app_commands.describe(name="Término a buscar entre los sonidos locales.")
 async def search(interaction: Interaction, name: str):
     await on_search_executed(
         name,
@@ -201,6 +210,7 @@ async def play(ctx: Context, *args: str):
 
 
 @bot.tree.command(name="play", description="Reproduce el sonido con ese nombre o la url indicada.")
+@app_commands.describe(sounds="Sonidos a reproducir separados por un espacio.")
 async def play(interaction: Interaction, *, sounds: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
@@ -220,7 +230,7 @@ async def play(interaction: Interaction, *, sounds: str):
 async def play(interaction: Interaction, message: Message):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
-    sounds = message.content.replace("!p", "").strip().split(" ")
+    sounds = list(filter(lambda part: not part.startswith("!"), message.content.strip().split(" ")))
     await interaction.response.send_message(":clock10: Buscando resultados en el mensaje...")
     await on_play(
         sounds=sounds,
@@ -251,10 +261,7 @@ async def tts(ctx: Context, *, args: str):
 
 @bot.tree.context_menu(name="Read message")
 async def tts(interaction: Interaction, message: Message):
-    if not await audio_play_prechecks(
-            message.guild,
-            interaction.user,
-            lambda error: interaction.response.send_message(error)):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
 
     await on_tts(
@@ -270,6 +277,7 @@ async def tts(interaction: Interaction, message: Message):
 
 
 @bot.tree.command(name="tts", description="Genera un mensaje tts.")
+@app_commands.describe(message="Mensaje a reproducir mediante tts.")
 async def tts(interaction: Interaction, *, message: str):
     if not await audio_play_prechecks(
             interaction.guild,
@@ -381,6 +389,7 @@ async def ask(ctx: Context, *, text: str = ""):
 
 
 @bot.tree.command(name="ask", description="Genera una pregunta a la API de OpenAI y la reproduce.")
+@app_commands.describe(text="Texto de entrada para generar la respuesta.")
 async def ask(interaction: Interaction, *, text: str = ""):
     await interaction.response.send_message(":clock10: Generando respuesta...")
     await on_ask(
@@ -410,21 +419,6 @@ async def ask(interaction: Interaction, message: Message):
     )
 
 
-@bot.command(aliases=["yt"], require_var_positional=True)
-async def youtube(ctx: Context, *args: str):
-    search_query = " ".join(args)
-    if not await audio_play_prechecks(ctx.guild, ctx.author, lambda error: ctx.send(error)):
-        return
-    database.register_user_interaction(ctx.author.name, "youtube")
-    await ctx.send(f":clock10: Buscando `{search_query}` en YouTube...")
-    yt_dlp_info = yt_search_and_extract_yt_dlp_info(search_query)
-    if yt_dlp_info is not None:
-        async for sound in generate_sounds_from_yt_dlp_info(ctx, yt_dlp_info):
-            await add_to_queue(ctx.guild.id, ctx.author.voice.channel, ctx.channel, sound)
-    else:
-        await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
-
-
 @bot.command(aliases=["d"], require_var_positional=True)
 async def dalle(ctx: Context, *, text: str):
     await on_dalle(
@@ -438,6 +432,7 @@ async def dalle(ctx: Context, *, text: str):
 
 
 @bot.tree.command(name="dalle", description="Genera imagenes según el texto que se le ha introducido.")
+@app_commands.describe(text="Texto de entrada para generar las imágenes.")
 async def dalle(interaction: Interaction, *, text: str):
     await on_dalle(
         channel=interaction.channel,
@@ -450,87 +445,189 @@ async def dalle(interaction: Interaction, *, text: str):
 
 
 @bot.command(aliases=["co"])
-async def confetti(ctx: Context, arg: int = 1):
-    await ctx.send(f":confetti_ball: Escuchando Confetti en horas de trabajo...")
-    database.register_user_interaction(ctx.author.name, "confetti")
-    yt_dlp_info = extract_yt_dlp_info("https://www.youtube.com/channel/UCyFr9xzU_lw9cDA69T0EmGg")
-    if yt_dlp_info is not None:
-        songs = yt_dlp_info.get('entries')
-        if arg < len(songs):
-            songs = random.sample(yt_dlp_info.get('entries'), arg)
-        for song in songs:
+async def confetti(ctx: Context, number_of_songs: int = 1):
+    if not await audio_play_prechecks(ctx.guild, ctx.author, lambda error: ctx.send(error)):
+        return
+    await on_confetti(
+        number_of_songs=number_of_songs,
+        author_name=ctx.author.name,
+        guild_id=ctx.guild.id,
+        voice_channel=ctx.author.voice.channel,
+        channel=ctx.channel,
+        database=database,
+        on_search=lambda message: ctx.send(message)
+    )
 
-            await (ctx, song.get('url'))
+
+@bot.tree.command(name="confetti", description="Reproduce el número especificado de canciones aleatorias de Confetti.")
+@app_commands.describe(number_of_songs="Cantidad de canciones de Confetti a buscar.")
+@app_commands.rename(number_of_songs="quantity")
+async def confetti(interaction: Interaction, number_of_songs: int = 1):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_confetti(
+        number_of_songs=number_of_songs,
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        on_search=lambda message: interaction.response.send_message(message)
+    )
+
+
+@bot.command(aliases=["yt"], require_var_positional=True)
+async def youtube(ctx: Context, *, query: str):
+    if not await audio_play_prechecks(ctx.guild, ctx.author, lambda error: ctx.send(error)):
+        return
+    await on_search_in_youtube(
+        author_name=ctx.author.name,
+        query=query,
+        guild_id=ctx.guild.id,
+        voice_channel=ctx.author.voice.channel,
+        channel=ctx.channel,
+        database=database,
+        on_search=lambda message: ctx.send(message)
+    )
+
+
+@search_group.command(name="yt", description="Busca en YouTube y reproduce el primer resultado.")
+@app_commands.describe(query="Texto a buscar en Youtube.")
+async def youtube(interaction: Interaction, *, query: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_search_in_youtube(
+        author_name=interaction.user.name,
+        query=query,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        on_search=lambda message: interaction.response.send_message(message)
+    )
+
+
+@bot.tree.context_menu(name="Search on Youtube")
+async def youtube(interaction: Interaction, message: Message):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_search_in_youtube(
+        author_name=interaction.user.name,
+        query=message.content,
+        guild_id=message.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=message.channel,
+        database=database,
+        on_search=lambda message: interaction.response.send_message(message)
+    )
 
 
 @bot.command(aliases=["ytmusic", "ytm"], require_var_positional=True)
-async def youtubemusic(ctx: Context, *args: str):
-    search_query = " ".join(args)
-    database.register_user_interaction(ctx.author.name, "ytmusic")
+async def youtubemusic(ctx: Context, *, query: str):
+    if not await audio_play_prechecks(ctx.guild, ctx.author, lambda error: ctx.send(error)):
+        return
+    await on_search_in_youtube_music(
+        author_name=ctx.author.name,
+        guild_id=ctx.guild.id,
+        voice_channel=ctx.author.voice.channel,
+        channel=ctx.channel,
+        database=database,
+        query=query,
+        on_search=lambda message: ctx.send(message)
+    )
 
-    if "#" not in search_query:
-        search_query += "#songs"
 
-    result_url = [yt_music_search_and_extract_yt_dlp_info(search_query).get('url')]
-    if result_url is not None:
-        await on_play(
-            sounds=result_url,
-            author_name=ctx.author.name,
-            guild_id=ctx.guild.id,
-            database=database,
-            voice_channel=ctx.author.voice.channel,
-            text_channel=ctx.channel
-        )
-    else:
-        await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
+@search_group.command(name="ytmusic", description="Busca en YouTube Music y reproduce el primer resultado. Puedes usar: #albums, #songs, #videos.")
+@app_commands.describe(query="Texto a buscar en Youtube Music.")
+async def youtubemusic(interaction: Interaction, *, query: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_search_in_youtube_music(
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        query=query,
+        on_search=lambda message: interaction.response.send_message(message)
+    )
+
+
+@bot.tree.context_menu(name="Search on Youtube Music")
+async def youtubemusic(interaction: Interaction, message: Message):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_search_in_youtube_music(
+        author_name=interaction.user.name,
+        guild_id=message.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=message.channel,
+        database=database,
+        query=message.content,
+        on_search=lambda message: interaction.response.send_message(message)
+    )
 
 
 @bot.command(aliases=["ytmix"], require_var_positional=True)
-async def youtubemix(ctx: Context, *, arg: str = ""):
-    database.register_user_interaction(ctx.author.name, "youtubemix")
-    if arg.startswith("http://") or arg.startswith("https://"):
-        if is_youtube_url(arg):
-            yt_dlp_info = extract_yt_dlp_info(arg)
-            await play_youtube_mix(ctx, yt_dlp_info)
-        else:
-            await ctx.send(f":no_entry_sign: Solo se puede crear un mix de un vídeo de YouTube.")
-    elif len(arg) > 0:
-        yt_dlp_info = yt_search_and_extract_yt_dlp_info(arg)
-        await play_youtube_mix(ctx, yt_dlp_info)
+async def youtubemix_legacy(ctx: Context, *, arg: str = ""):
+    if not await audio_play_prechecks(ctx.guild, ctx.author, lambda error: ctx.send(error)):
+        return
+    await on_youtube_mix(
+        arg=arg,
+        author_name=ctx.author.name,
+        guild_id=ctx.guild.id,
+        voice_channel=ctx.author.voice.channel,
+        channel=ctx.channel,
+        database=database,
+        on_message=lambda message: ctx.send(message)
+    )
 
 
 @bot.command(aliases=["ytmmix", "ytmusicmix"], require_var_positional=True)
-async def youtubemusicmix(ctx: Context, *, arg: str = ""):
-    database.register_user_interaction(ctx.author.name, "youtubemusicmix")
-    if arg.startswith("http://") or arg.startswith("https://"):
-        if is_youtube_url(arg):
-            yt_dlp_info = extract_yt_dlp_info(arg)
-            await play_youtube_mix(ctx, yt_dlp_info)
-        else:
-            await ctx.send(f":no_entry_sign: Solo se puede crear un mix de una canción de YouTube.")
-    elif len(arg) > 0:
-        yt_music_search_query = arg.rsplit("#", 1)[0] + "#songs"
-        yt_dlp_info = yt_music_search_and_extract_yt_dlp_info(yt_music_search_query)
-        await play_youtube_mix(ctx, yt_dlp_info)
+async def youtubemusicmix_legacy(ctx: Context, *, arg: str = ""):
+    if not await audio_play_prechecks(ctx.guild, ctx.author, lambda error: ctx.send(error)):
+        return
+    await on_youtube_music_mix(
+        arg=arg,
+        author_name=ctx.author.name,
+        guild_id=ctx.guild.id,
+        voice_channel=ctx.author.voice.channel,
+        channel=ctx.channel,
+        database=database,
+        on_message=lambda message: ctx.send(message)
+    )
 
 
-async def play_youtube_mix(ctx: Context, yt_dlp_info: Any):
-    if yt_dlp_info is not None and yt_dlp_info.get('id') is not None:
-        title = yt_dlp_info.get('title')
-        video_id = yt_dlp_info.get('id')
-        url = f"https://www.youtube.com/watch?v={video_id}&list=RD{video_id}"
-        sounds = [url]
-        await ctx.send(f":twisted_rightwards_arrows: Añadiendo el mix de `{title}`...")
-        await on_play(
-            sounds=sounds,
-            author_name=ctx.author.name,
-            guild_id=ctx.guild.id,
-            database=database,
-            voice_channel=ctx.author.voice.channel,
-            text_channel=ctx.channel
-        )
-    else:
-        await ctx.send(":no_entry_sign: No se ha encontrado ningún contenido.")
+@mix_group.command(name="youtubemusic", description="Reproduce un mix generado a partir de la búsqueda o url de YouTube Music introducida.")
+@app_commands.describe(term="Texto a buscar en Youtube Music para generar el mix.")
+async def youtubemusicmix(interaction: Interaction, *, term: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_youtube_music_mix(
+        arg=term,
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        on_message=lambda message: interaction.response.send_message(message)
+    )
+
+
+@mix_group.command(name="youtube", description="Reproduce un mix generado a partir de la búsqueda o url de YouTube introducida.")
+@app_commands.describe(term="Texto a buscar en Youtube para generar el mix.")
+async def youtubemix(interaction: Interaction, *, term: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_youtube_mix(
+        arg=term,
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        on_message=lambda message: interaction.response.send_message(message)
+    )
 
 
 def dalle_listener(result: DalleImages):

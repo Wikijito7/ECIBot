@@ -3,7 +3,6 @@ from typing import Callable, Any
 from discord.abc import Messageable
 from discord.channel import VocalGuildChannel
 from yt_dlp.extractor.soundcloud import SoundcloudIE
-from ytmusicapi import YTMusic
 
 from bd import Database
 from commands.play import on_play
@@ -11,7 +10,7 @@ from youtube import extract_yt_dlp_info, soundcloud_search_and_extract_yt_dlp_in
 
 
 async def on_soundcloud_mix(arg: str, author_name: str, guild_id: int, voice_channel: VocalGuildChannel,
-                               channel: Messageable, database: Database, yt_music: YTMusic, on_message: Callable[[str], Any]):
+                               channel: Messageable, database: Database, on_message: Callable[[str], Any]):
     database.register_user_interaction(author_name, "soundcloudmix")
     if arg.startswith("http://") or arg.startswith("https://"):
         if SoundcloudIE.suitable(arg):

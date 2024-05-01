@@ -663,7 +663,6 @@ async def soundcloudmix(interaction: Interaction, *, term: str):
         voice_channel=interaction.user.voice.channel,
         channel=interaction.channel,
         database=database,
-        yt_music=yt_music,
         on_message=lambda message: interaction.response.send_message(message)
     )
 

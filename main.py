@@ -30,6 +30,7 @@ from processors import process_link, process_reactions
 from utils import *
 from voice import *
 from youtube import *
+from ytmusicapi import YTMusic
 
 intents = discord.Intents.all()
 intents.members = True
@@ -594,6 +595,7 @@ async def youtubemusicmix_legacy(ctx: Context, *, arg: str = ""):
         voice_channel=ctx.author.voice.channel,
         channel=ctx.channel,
         database=database,
+        yt_music=yt_music,
         on_message=lambda message: ctx.send(message)
     )
 
@@ -610,6 +612,7 @@ async def youtubemusicmix(interaction: Interaction, *, term: str):
         voice_channel=interaction.user.voice.channel,
         channel=interaction.channel,
         database=database,
+        yt_music=yt_music,
         on_message=lambda message: interaction.response.send_message(message)
     )
 
@@ -714,4 +717,5 @@ async def event_listener():
 if __name__ == "__main__":
     database = Database(get_username_key(), get_password_key(), get_database_key())
     openai_client = OpenAiClient(get_openai_key())
+    yt_music = YTMusic()
     bot.run(get_bot_key())

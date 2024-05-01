@@ -31,7 +31,8 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * Generate custom images using Dall-e mini API.
 * Generate custom text using OpenAI API.
 
-### Commands
+### Legacy Commands
+**NOTE: These commands are deprecated and will stop working in the future. Please, use slash commands instead.**
 * `!help`: Shows the help message.
 * `!sonidos`: Shows the list of custom sounds and the quantity available.
 * `!play <name or url>`: Plays the sound with that name or the specified url. This url can be direct or from services supported by yt-dlp, such as YouTube or Twitter. Alternative command: !p.
@@ -39,7 +40,6 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!queue`: Shows current queue. Alternative command: !q y !cola.
 * `!tts <prompt>`: Generates a tts sound with the given message. Alternative command: !t, !say y !decir.
 * `!ask <prompt>`: Sends the prompt to OpenAI's API and generate a tts sound with the answer given. Alternative command: !a, !preguntar y !pr.
-* `!poll <prompt>`: Creates a yes or no poll message with the given prompt. Alternative command: !e y !encuesta.
 * `!yt <search query>`: Searches YouTube and plays the first result. Alternative command: !youtube.
 * `!ytmusic <search query>`: Searches YouTube Music and plays the first result. You can use hashtags to specify the type of content. Alternative command: !ytm and !youtubemusic.
 * `!search <prompt>`: Search custom sounds that contains given prompt. Alternative command: !b y !buscar.
@@ -48,11 +48,26 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 * `!ytmix <search query or url>`: Plays a mix generated from the given YouTube search or url. Alternative command: !youtubemix
 * `!ytmusicmix <search query or url>`: Plays a mix generated from the given YouTube Music search or url. Alternative command: !ytmmix and !youtubemusicmix 
 
+### Slash Commands
+* `/sounds`: Shows the list of custom sounds and the quantity available.
+* `/play <name or url>`: Plays the sound with that name or the specified url. This url can be direct or from services supported by yt-dlp, such as YouTube or Twitter. Alternative command: !p.
+* `/stop`: Stops the current sound playing. If there isn't more on the queue, the bot will disconnect from the voice channel. Alternative command: !s. 
+* `/queue`: Shows current queue. Alternative command: !q y !cola.
+* `/tts <prompt>`: Generates a tts sound with the given message. Alternative command: !t, !say y !decir.
+* `/ask <prompt>`: Sends the prompt to OpenAI's API and generate a tts sound with the answer given. Alternative command: !a, !preguntar y !pr.
+* `/search local <prompt>`: Search custom sounds that contains given prompt. Alternative command: !b y !buscar.
+* `/search youtube <search query>`: Searches YouTube and plays the first result. Alternative command: !youtube.
+* `/search youtubemusic <search query>`: Searches YouTube Music and plays the first result. You can use hashtags to specify the type of content. Alternative command: !ytm and !youtubemusic.
+* `/dalle <prompt>`: Generates 9 images in a 3 by 3 array by sending the given prompt to Dall-e mini API. It may take up to a minute to get the images from the API. Alternative command: !d.
+* `/confetti <number>`: Plays the specified number of random Confetti songs. Alternative command: !co.
+* `/mix youtube <search query or url>`: Plays a mix generated from the given YouTube search or url. Alternative command: !youtubemix
+* `/mix youtubemusic <search query or url>`: Plays a mix generated from the given YouTube Music search or url. Alternative command: !ytmmix and !youtubemusicmix 
+
 ## TODO:
 * [X] Add more commands.
 * [X] Add tts messages to queue.
 * [X] Create log system.
-* [ ] Add more logs.
+* [X] Add more logs.
 * [ ] Add language support.
 * [ ] Create lang file.
 * [ ] Create constants file for the bot.

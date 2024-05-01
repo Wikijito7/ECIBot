@@ -491,7 +491,7 @@ async def youtube(ctx: Context, *, query: str):
     )
 
 
-@search_group.command(name="yt", description="Busca en YouTube y reproduce el primer resultado.")
+@search_group.command(name="youtube", description="Busca en YouTube y reproduce el primer resultado.")
 @app_commands.describe(query="Texto a buscar en Youtube.")
 async def youtube(interaction: Interaction, *, query: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
@@ -537,7 +537,7 @@ async def youtubemusic(ctx: Context, *, query: str):
     )
 
 
-@search_group.command(name="ytmusic", description="Busca en YouTube Music y reproduce el primer resultado. Puedes usar: #albums, #songs, #videos.")
+@search_group.command(name="youtubemusic", description="Busca en YouTube Music y reproduce el primer resultado. Puedes usar: #albums, #songs, #videos.")
 @app_commands.describe(query="Texto a buscar en Youtube Music.")
 async def youtubemusic(interaction: Interaction, *, query: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):

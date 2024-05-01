@@ -88,7 +88,6 @@ async def generate_sounds(channel: Messageable, *args: str) -> AsyncIterable[Sou
             yield Sound(name, SoundType.URL, url)
 
         elif arg.startswith("http://") or arg.startswith("https://"):
-            await channel.send(":clock10: Obteniendo información...")
             async for sound in generate_sounds_from_url(channel, arg, None):
                 yield sound
 

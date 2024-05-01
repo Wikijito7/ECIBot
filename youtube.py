@@ -56,6 +56,16 @@ def yt_music_search_and_extract_yt_dlp_info(search_query: str) -> Any:
         traceback.print_exc()
 
 
+def soundcloud_search_and_extract_yt_dlp_info(search_query: str) -> Any:
+    try:
+        with yt_dlp.YoutubeDL() as ydl:
+            return ydl.extract_info(f"scsearch1:{search_query}", download=False).get('entries')[0]  # scsearch for SoundCloud search, and 1 for one result.
+
+    except Exception:
+        log.error("soundcloud_search_and_extract_yt_dlp_info >> Exception thrown when extracting Soundcloud search info with yt-dlp.")
+        traceback.print_exc()
+
+
 def is_suitable_for_yt_dlp(url: str) -> bool:
     for extractor in YT_DLP_EXTRACTORS:
         if extractor.suitable(url) and extractor.IE_NAME != 'generic':

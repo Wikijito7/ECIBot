@@ -2,7 +2,7 @@ from typing import Callable, Any
 
 from discord import Guild, VoiceClient
 
-from bd import Database
+from database import Database
 from guild_queue import get_guild_queue
 from voice import stop_and_disconnect
 

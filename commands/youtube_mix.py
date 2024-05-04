@@ -4,7 +4,7 @@ from discord.abc import Messageable
 from discord.channel import VocalGuildChannel
 from ytmusicapi import YTMusic
 
-from bd import Database
+from database import Database
 from commands.play import on_play
 from youtube import (is_youtube_url, extract_yt_dlp_info, yt_music_search_and_extract_yt_dlp_info,
                      yt_search_and_extract_yt_dlp_info)

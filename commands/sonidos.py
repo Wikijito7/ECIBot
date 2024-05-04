@@ -2,7 +2,7 @@ from typing import Any, Callable, Union
 
 from discord import Embed, Member, User
 
-from bd import Database
+from database import Database
 from utils import get_sounds_list, get_sounds
 
 

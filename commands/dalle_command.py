@@ -2,7 +2,7 @@ from typing import Callable, Any
 
 from discord.abc import Messageable
 
-from bd import Database
+from database import Database
 from dalle import generate_images, DalleImages
 from threads import launch
 

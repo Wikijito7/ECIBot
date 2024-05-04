@@ -3,7 +3,7 @@ from typing import Callable, Any
 from discord.abc import Messageable
 from discord.channel import VocalGuildChannel
 
-from bd import Database
+from database import Database
 from commands.play import on_play
 from guild_queue import add_to_queue
 from voice import generate_sounds_from_yt_dlp_info

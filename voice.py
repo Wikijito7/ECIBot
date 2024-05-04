@@ -127,7 +127,12 @@ async def generate_sounds_from_yt_dlp_info(channel: Messageable, yt_dlp_info: An
             async for sound in generate_sounds_from_yt_dlp_info(channel, entry):
                 yield sound
     else:
-        async for sound in generate_sounds_from_url(channel, yt_dlp_info.get('url'), yt_dlp_info.get('title')):
+        url = yt_dlp_info.get('url')
+        title = yt_dlp_info.get('title')
+        artists = yt_dlp_info.get('artists')
+        if artists is not None and len(artists) > 0:
+            title = f"{artists[0]} - {title}"
+        async for sound in generate_sounds_from_url(channel, url, title):
             yield sound
 
 

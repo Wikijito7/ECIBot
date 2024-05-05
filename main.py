@@ -24,6 +24,8 @@ from commands.queue import on_queue
 from commands.say import on_tts
 from commands.search import on_search_executed
 from commands.sonidos import on_sounds_requested
+from commands.soundcloud_mix import on_soundcloud_mix
+from commands.soundcloud_search import on_search_in_soundcloud
 from commands.stop import on_stop
 from commands.youtube_mix import on_youtube_music_mix, on_youtube_mix
 from commands.youtube_search import on_search_in_youtube, on_search_in_youtube_music
@@ -569,6 +571,22 @@ async def youtubemusic(interaction: Interaction, *, query: str):
     )
 
 
+@search_group.command(name="soundcloud", description="Busca en Soundcloud y reproduce el primer resultado.")
+@app_commands.describe(query="Texto a buscar en Soundcloud.")
+async def soundcloud(interaction: Interaction, *, query: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_search_in_soundcloud(
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        query=query,
+        on_search=lambda message: interaction.response.send_message(message)
+    )
+
+
 @bot.tree.context_menu(name="Search on Youtube Music")
 async def youtubemusic(interaction: Interaction, message: Message):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
@@ -638,6 +656,22 @@ async def youtubemix(interaction: Interaction, *, term: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
     await on_youtube_mix(
+        arg=term,
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        voice_channel=interaction.user.voice.channel,
+        channel=interaction.channel,
+        database=database,
+        on_message=lambda message: interaction.response.send_message(message)
+    )
+
+
+@mix_group.command(name="soundcloud", description="Reproduce un mix generado a partir de la búsqueda o url de Soundcloud introducida.")
+@app_commands.describe(term="Texto a buscar en Soundcloud para generar el mix.")
+async def soundcloudmix(interaction: Interaction, *, term: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_soundcloud_mix(
         arg=term,
         author_name=interaction.user.name,
         guild_id=interaction.guild.id,

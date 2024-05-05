@@ -51,17 +51,14 @@ ECIBot is a Discord bot made in Python. It's main purpose is to be a custom bot 
 ### Slash Commands
 * `/sounds`: Shows the list of custom sounds and the quantity available.
 * `/play <name or url>`: Plays the sound with that name or the specified url. This url can be direct or from services supported by yt-dlp, such as YouTube or Twitter.
-* `/stop`: Stops the current sound playing. If there isn't more on the queue, the bot will disconnect from the voice channel.
+* `/skip`: Skips the current sound playing. If there isn't more on the queue, the bot will disconnect from the voice channel.
 * `/queue`: Shows current queue.
 * `/tts <prompt>`: Generates a tts sound with the given message.
 * `/ask <prompt>`: Sends the prompt to OpenAI's API and generate a tts sound with the answer given.
-* `/search local <prompt>`: Search custom sounds that contains given prompt.
-* `/search youtube <search query>`: Searches YouTube and plays the first result.
-* `/search youtubemusic <search query>`: Searches YouTube Music and plays the first result. You can use hashtags to specify the type of content.
+* `/search <local/youtube/youtubemusic/soundcloud> <prompt>`: Searches local sounds that contains that prompt or searches it in the specified service and plays the first result. In the case of YouTube Music you can use hashtags to specify the type of content.
 * `/dalle <prompt>`: Generates 9 images in a 3 by 3 array by sending the given prompt to Dall-e mini API. It may take up to a minute to get the images from the API.
-* `/confetti <number>`: Plays the specified number of random Confetti songs.
-* `/mix youtube <search query or url>`: Plays a mix generated from the given YouTube search or url.
-* `/mix youtubemusic <search query or url>`: Plays a mix generated from the given YouTube Music search or url.
+* `/confetti <number>`: 🎉 Plays the specified number of random Confetti songs.
+* `/mix <youtube/youtubemusic/soundcloud> <search query or url>`: Plays a mix generated from the given search or url.
 
 ## TODO:
 * [X] Add more commands.

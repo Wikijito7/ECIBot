@@ -710,9 +710,8 @@ async def radio_play(interaction: Interaction, radio: str):
 async def radio_list(interaction: Interaction):
     await on_radio_list(
         author_name=interaction.user.name,
-        channel=interaction.channel,
         database=database,
-        on_message=lambda: interaction.response.send_message(":thumbsup:", ephemeral=True, silent=True, delete_after=1)
+        on_message=lambda embed, view: interaction.response.send_message(embed=embed, view=view)
     )
 
 

@@ -8,8 +8,7 @@ from discord.channel import VocalGuildChannel
 
 from database import Database
 from guild_queue import add_to_queue
-from radio import get_radio_by_name, get_radios, get_number_of_radios, get_number_of_pages, get_radio_page
-from utils import generate_sound_list_format
+from radio import get_radio_by_name, get_number_of_radios, get_number_of_pages, get_radio_page
 from voice import Sound, SoundType
 
 
@@ -39,7 +38,7 @@ class RadioView(discord.ui.View):
     async def __update_embed__(self, interaction):
         await interaction.response.edit_message(
             embed=get_formatted_embed(
-                radio_pages=get_radio_page(self.__current_page),
+                radio_pages=get_radio_page(self.__current_page - 1),
                 number_of_radios=get_number_of_radios(),
                 current_page=self.__current_page
             ),
@@ -55,20 +54,19 @@ async def on_radio_play(radio_name: str, author_name: str, guild_id: int, databa
     await add_to_queue(guild_id, voice_channel, text_channel, sound)
 
 
-async def on_radio_list(author_name: str, channel: Messageable, database: Database, on_message: Callable[[], Any]):
+async def on_radio_list(author_name: str, database: Database, on_message: Callable[[Embed, RadioView], Any]):
     database.register_user_interaction(author_name, "radio list")
     current_page = 0
     radio_formated = get_radio_page(current_page)
-    embed_msg = get_formatted_embed(radio_formated, get_number_of_radios(), current_page)
-    await on_message()
-    await channel.send(embed=embed_msg, view=RadioView(current_page, get_number_of_pages()))
+    embed_msg = get_formatted_embed(radio_formated, get_number_of_radios(), current_page + 1)
+    await on_message(embed_msg, RadioView(current_page + 1, get_number_of_pages()))
 
 
 def get_formatted_embed(radio_pages: list[str], number_of_radios: int, current_page: int):
     blank_space = "\u2800"
     embed_msg = Embed(title="Lista de radios", description=f"Actualmente hay {number_of_radios} radios.", color=0x01B05B)
-    max_page = get_number_of_pages() + 1
+    max_page = get_number_of_pages()
     for page in radio_pages:
         embed_msg.add_field(name=blank_space, value=page, inline=True)
-    embed_msg.set_footer(text=f"Página {current_page + 1} de {max_page}")
+    embed_msg.set_footer(text=f"Página {current_page} de {max_page}")
     return embed_msg

@@ -1,4 +1,5 @@
 import asyncio
+from math import ceil
 from typing import Optional
 
 import requests
@@ -58,9 +59,9 @@ def get_all_radios_paged() -> list[str]:
 
 def get_radio_page(page: int) -> list[str]:
     return [
-        __radios_paged[page],
-        __radios_paged[page + 1] if len(__radios_paged) > page + 1 else "",
-        __radios_paged[page + 2] if len(__radios_paged) > page + 2 else ""
+        __radios_paged[(page * 3)],
+        __radios_paged[(page * 3) + 1] if len(__radios_paged) > page + 1 else "",
+        __radios_paged[(page * 3) + 2] if len(__radios_paged) > page + 2 else ""
     ]
 
 
@@ -176,4 +177,4 @@ def __get_radio_record_url__(station):
 
 if __name__ == "__main__":
     asyncio.run(fetch_api_radios(None))
-    print(get_all_radios_paged(), get_number_of_pages())
+    print(get_all_radios_paged(), get_number_of_pages(), len(__radios_paged))

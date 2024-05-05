@@ -1,5 +1,4 @@
-import logging
-from typing import Callable, Any, Optional
+from typing import Callable, Any
 
 import discord.ui
 from discord import Embed, Interaction
@@ -31,16 +30,16 @@ class RadioView(discord.ui.View):
     async def next_button(self, interaction: Interaction, button: discord.ui.Button):
         self.__current_page += 1
         self.previous_button.disabled = False
-        if self.__current_page == self.__max_page:
+        if self.__current_page == self.__max_page - 1:
             self.next_button.disabled = True
         await self.__update_embed__(interaction)
 
     async def __update_embed__(self, interaction):
         await interaction.response.edit_message(
             embed=get_formatted_embed(
-                radio_pages=get_radio_page(self.__current_page - 1),
+                radio_pages=get_radio_page(self.__current_page),
                 number_of_radios=get_number_of_radios(),
-                current_page=self.__current_page
+                current_page=self.__current_page + 1
             ),
             view=self
         )
@@ -59,7 +58,7 @@ async def on_radio_list(author_name: str, database: Database, on_message: Callab
     current_page = 0
     radio_formated = get_radio_page(current_page)
     embed_msg = get_formatted_embed(radio_formated, get_number_of_radios(), current_page + 1)
-    await on_message(embed_msg, RadioView(current_page + 1, get_number_of_pages()))
+    await on_message(embed_msg, RadioView(current_page, get_number_of_pages()))
 
 
 def get_formatted_embed(radio_pages: list[str], number_of_radios: int, current_page: int):

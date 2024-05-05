@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 import requests
@@ -7,20 +8,20 @@ from models.Radio import Radio
 
 from utils import flatten
 
+TDT_CHANNELS_URL = "https://www.tdtchannels.com/lists/radio.json"
+RUSSIAN_RADIO_RECORD_RADIOS_URL = "https://www.radiorecord.ru/api/stations/"
+DFM_RADIO_URL = "https://dfm.ru/api/channel_list"
+ENERGY_RADIO_URL = "https://api.nrjnet.de/webradio/energy/config.json"
+SPANISH_RADIOS_NAME_FILTER = ["Populares", "Musicales", "Deportivas", "Infantiles", "Internacional"]
+MAX_RADIOS_PER_FIELD = 35
+MAX_FIELD_CHARACTERS = 1000
+
 __radios = []
-SPANISH_RADIOS_URL = "https://www.tdtchannels.com/lists/radio.json"
-RUSSIAN_RADIOS_URL = "https://www.radiorecord.ru/api/stations/"
-SPANISH_RADIOS_NAME_FILTER = ["Populares", "Musicales", "Deportivas", "Andalucía"]
+__radios_paged = []
 
 
 def get_radios(database: Database) -> list[Radio]:
     return __radios if len(__radios) > 0 else fetch_local_radios(database)
-
-
-def fetch_local_radios(database: Database) -> list[Radio]:
-    __radios.clear()
-    __radios.extend(database.get_all_radios())
-    return __radios
 
 
 def get_radio_by_name(name: str, database: Database) -> Optional[Radio]:
@@ -31,39 +32,102 @@ def get_radio_by_name(name: str, database: Database) -> Optional[Radio]:
     return None
 
 
+def get_number_of_radios() -> int:
+    return len(__radios)
+
+
+def get_number_of_pages() -> int:
+    return len(__radios_paged) // 3
+
+
+def get_all_radios_paged() -> list[str]:
+    radios_mapped = list(sorted(map(lambda radio: radio.get_radio_name(), __radios)))
+    radios_paged = []
+    current_page = ""
+    blank_space = "\u2800"
+    while len(radios_mapped) > 0:
+        has_field_enough_characters = len(current_page) + len(radios_mapped[0]) > MAX_FIELD_CHARACTERS
+        has_field_enough_radios = current_page.count("\n") + 1 > MAX_RADIOS_PER_FIELD
+        if not has_field_enough_characters and not has_field_enough_radios:
+            current_page = f"{current_page}\n{radios_mapped.pop(0)}{blank_space}"
+        else:
+            radios_paged.append(current_page)
+            current_page = ""
+    return radios_paged
+
+
+def get_radio_page(page: int) -> list[str]:
+    return [
+        __radios_paged[page],
+        __radios_paged[page + 1] if len(__radios_paged) > page + 1 else "",
+        __radios_paged[page + 2] if len(__radios_paged) > page + 2 else ""
+    ]
+
+
+def fetch_local_radios(database: Database) -> list[Radio]:
+    __radios.clear()
+    __radios.extend(database.get_all_radios())
+    return __radios
+
+
 async def fetch_api_radios(database: Database):
-    spanish_radios = await __fetch_spanish_radios__()
-    russian_radios = await __fetch_russian_radios__()
+    spanish_radios = await __fetch_tdt_channels_radios__()
+    radio_record_radios = await __fetch_radio_record_radios__()
+    dfm_radio = await __fetch_dfm_radios__()
+    energy_radio = await __fetch_energy_radios__()
     all_radios = []
     all_radios.extend(spanish_radios)
-    all_radios.extend(russian_radios)
+    all_radios.extend(radio_record_radios)
+    all_radios.extend(dfm_radio)
+    all_radios.extend(energy_radio)
+    # TODO: Register radios && fetch local
     # database.register_radio_list(all_radios)
     __radios.clear()
     __radios.extend(all_radios)
+    __radios_paged.clear()
+    __radios_paged.extend(get_all_radios_paged())
 
 
-async def __fetch_spanish_radios__() -> list[Radio]:
-    response = requests.get(SPANISH_RADIOS_URL)
+async def __fetch_tdt_channels_radios__() -> list[Radio]:
+    response = requests.get(TDT_CHANNELS_URL)
     if response.status_code == 200:
         body = response.json()
-        spanish_radios = list(filter(lambda country: country["name"] == "Spain", body["countries"]))
-        spanish_ambits = flatten(list(map(lambda radio: radio["ambits"], spanish_radios)))
-        filtered_ambits = list(filter(lambda ambit: ambit["name"] in SPANISH_RADIOS_NAME_FILTER, spanish_ambits))
-        return __get_spanish_radios_from_json__(filtered_ambits)
+        countries = body["countries"]
+        ambits = flatten(list(map(lambda radio: radio["ambits"], countries)))
+        filtered_ambits = list(filter(lambda ambit: ambit["name"] in SPANISH_RADIOS_NAME_FILTER, ambits))
+        return __get_tdt_channels_from_json__(filtered_ambits)
     return []
 
 
-async def __fetch_russian_radios__() -> list[Radio]:
-    response = requests.get(RUSSIAN_RADIOS_URL)
+async def __fetch_radio_record_radios__() -> list[Radio]:
+    response = requests.get(RUSSIAN_RADIO_RECORD_RADIOS_URL)
     if response.status_code == 200:
         body = response.json()
         results = body["result"]
         stations = results["stations"]
-        return __get_russians_radios_from_json(stations)
+        return __get_radio_record_radios_from_json(stations)
     return []
 
 
-def __get_spanish_radios_from_json__(ambits: list) -> list[Radio]:
+async def __fetch_dfm_radios__() -> list[Radio]:
+    response = requests.get(DFM_RADIO_URL)
+    if response.status_code == 200:
+        body = response.json()
+        results = body["items"]
+        return __get_dfm_radios_from_json__(results)
+    return []
+
+
+async def __fetch_energy_radios__() -> list[Radio]:
+    response = requests.get(ENERGY_RADIO_URL)
+    if response.status_code == 200:
+        body = response.json()
+        results = body["channels"]
+        return __get_energy_radios_from_json__(results)
+    return []
+
+
+def __get_tdt_channels_from_json__(ambits: list) -> list[Radio]:
     radios = []
     for ambit in ambits:
         for channel in ambit["channels"]:
@@ -73,19 +137,43 @@ def __get_spanish_radios_from_json__(ambits: list) -> list[Radio]:
     return radios
 
 
-def __get_russians_radios_from_json(stations: list) -> list[Radio]:
+def __get_radio_record_radios_from_json(stations: list) -> list[Radio]:
     radios = []
     for station in stations:
         station_name = f"Record {station['title']}"
-        station_url = __get_russian_url__(station)
+        station_url = __get_radio_record_url__(station)
         radios.append(Radio(station_name, station_url))
     return radios
 
 
-def __get_russian_url__(station):
+def __get_dfm_radios_from_json__(results: list) -> list[Radio]:
+    radios = []
+    for result in results:
+        station_name = f"DFM {result.get('name')}".replace("DFM DFM", "DFM")
+        station_url = result.get('stream_url')
+        radios.append(Radio(station_name, station_url))
+    return radios
+
+
+def __get_energy_radios_from_json__(results: list) -> list[Radio]:
+    radios = []
+    for result in results.keys():
+        radio = results[result]
+        station_name = f"Energy {radio.get('title')}"
+        station_url = radio.get('mp3')
+        radios.append(Radio(station_name, station_url))
+    return radios
+
+
+def __get_radio_record_url__(station):
     if len(station["stream_320"]) > 0:
         return station["stream_320"]
     elif len(station["stream_128"]) > 0:
         return station["stream_128"]
     else:
         return station["stream_64"]
+
+
+if __name__ == "__main__":
+    asyncio.run(fetch_api_radios(None))
+    print(get_all_radios_paged(), get_number_of_pages())

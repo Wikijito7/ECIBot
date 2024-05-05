@@ -5,14 +5,15 @@ from threading import Event
 from typing import List
 
 import discord
-from discord import Interaction, app_commands
+from discord import Interaction, app_commands, Message
 from discord.app_commands import Group, Choice
 from discord.channel import VocalGuildChannel
 from discord.ext import commands
 from discord.ext import tasks
+from discord.ext.commands import Context
 
 from ai import *
-from commands.radio_command import on_radio_play
+from commands.radio_command import on_radio_play, on_radio_list
 from database import Database
 from commands.ask import on_ask
 from commands.confetti import on_confetti
@@ -656,6 +657,7 @@ async def autocomplete_radio(interaction: discord.Interaction, current: str) -> 
 
 @radio_group.command(name="play", description="Reproduce la radio indicada")
 @app_commands.autocomplete(radio=autocomplete_radio)
+@app_commands.describe(radio="Nombre de la radio.")
 async def radio_play(interaction: Interaction, radio: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
@@ -667,6 +669,16 @@ async def radio_play(interaction: Interaction, radio: str):
         database=database,
         voice_channel=interaction.user.voice.channel,
         text_channel=interaction.channel
+    )
+
+
+@radio_group.command(name="list", description="Lista las radios disponibles")
+async def radio_list(interaction: Interaction):
+    await on_radio_list(
+        author_name=interaction.user.name,
+        channel=interaction.channel,
+        database=database,
+        on_message=lambda: interaction.response.send_message(":thumbsup:", ephemeral=True, silent=True, delete_after=1)
     )
 
 

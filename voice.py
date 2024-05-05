@@ -5,16 +5,15 @@ from collections.abc import AsyncIterable
 from enum import Enum
 from typing import Optional, Any, Callable
 
-from discord import FFmpegPCMAudio, VoiceClient, Member, Message, Guild
+from discord import FFmpegPCMAudio, VoiceClient, Member, Guild
 from discord.abc import Messageable
-from discord.ext.commands import Context
 
 from utils import AUDIO_FOLDER_PATH
 from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info, MAX_PLAYLIST_ITEMS
 
 FFMPEG_OPTIONS_FOR_REMOTE_URL = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
+    'options': '-vn',
 }
 
 

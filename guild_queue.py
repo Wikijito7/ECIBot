@@ -43,14 +43,17 @@ class GuildQueue:
 
     async def get_or_connect_to_voice_client(self) -> Optional[VoiceClient]:
         if self.__voice_client is None:
-            self.__voice_client = await self.__vocal_channel.connect()
+            self.__voice_client = await self.__vocal_channel.connect(self_deaf=True)
+        elif not self.__voice_client.is_connected():
+            await self.__voice_client.disconnect(force=True)
+            self.__voice_client = await self.__vocal_channel.connect(self_deaf=True)
         return self.__voice_client
 
     def has_finished(self) -> bool:
         return self.__finished
 
-    def set_finished(self, ready_for_removal: bool):
-        self.__finished = ready_for_removal
+    def set_finished(self, finished: bool):
+        self.__finished = finished
 
 
 guild_queues: list[GuildQueue] = []
@@ -105,22 +108,23 @@ async def add_to_queue(guild_id: int, vocal_channel: VocalGuildChannel, messagea
 async def play_sounds_in_all_queues():
     for guild_queue in guild_queues:
         try:
-            voice_client = await guild_queue.get_or_connect_to_voice_client()
-            if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
-                sound_queue = guild_queue.get_sound_queue()
-                if len(sound_queue) == 0:
-                    guild_queue.set_finished(True)
+            if not guild_queue.has_finished():
+                voice_client = await guild_queue.get_or_connect_to_voice_client()
+                if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
+                    sound_queue = guild_queue.get_sound_queue()
+                    if len(sound_queue) == 0:
+                        guild_queue.set_finished(True)
 
-                else:
-                    sound = sound_queue[0]
+                    else:
+                        sound = sound_queue[0]
 
-                    if sound.get_sound_type() is SoundType.TTS:
-                        await guild_queue.get_messageable().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
-                    elif sound.get_sound_type() is not SoundType.FILE_SILENT:
-                        await guild_queue.get_messageable().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
+                        if sound.get_sound_type() is SoundType.TTS:
+                            await guild_queue.get_messageable().send(f":microphone: Reproduciendo un mensaje tts en `{voice_client.channel.name}`.")
+                        elif sound.get_sound_type() is not SoundType.FILE_SILENT:
+                            await guild_queue.get_messageable().send(f":notes: Reproduciendo `{sound.get_name()}` en `{voice_client.channel.name}`.")
 
-                    await play_sound(voice_client, sound)
-                    sound_queue.pop(0)
+                        await play_sound(voice_client, sound)
+                        sound_queue.pop(0)
 
         except Exception as e:
             log.error("play_sounds_in_all_queues >> Caught exception playing sound. Removing sound queue for this guild...", exc_info=e)

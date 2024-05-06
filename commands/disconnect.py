@@ -14,6 +14,7 @@ async def on_disconnect(guild: Guild, author_name: str, database: Database, on_m
             database.register_user_interaction(author_name, "disconnect")
             guild_queue = get_guild_queue(guild.id)
             if guild_queue is not None:
+                guild_queue.set_finished(True)
                 guild_queue.clear_sound_queue()
             await stop_and_disconnect(voice_client)
             await on_message(":robot: Desconectando...")

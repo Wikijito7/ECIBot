@@ -10,7 +10,7 @@ from discord.abc import Messageable
 from discord.ext.commands import Context
 
 from utils import AUDIO_FOLDER_PATH
-from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info, MAX_PLAYLIST_ITEMS
+from youtube import is_suitable_for_yt_dlp, extract_yt_dlp_info, MAX_PLAYLIST_ITEMS, is_from_youtube_music
 
 FFMPEG_OPTIONS_FOR_REMOTE_URL = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -129,9 +129,9 @@ async def generate_sounds_from_yt_dlp_info(channel: Messageable, yt_dlp_info: An
     else:
         url = yt_dlp_info.get('url')
         title = yt_dlp_info.get('title')
-        artists = yt_dlp_info.get('artists')
-        if artists is not None and len(artists) > 0:
-            title = f"{artists[0]} - {title}"
+        if is_from_youtube_music(yt_dlp_info):
+            uploader = yt_dlp_info.get('uploader')
+            title = f"{uploader} - {title}"
         async for sound in generate_sounds_from_url(channel, url, title):
             yield sound
 

@@ -690,14 +690,14 @@ async def autocomplete_radio(interaction: discord.Interaction, current: str) -> 
 
 
 @radio_group.command(name="play", description="Reproduce la radio indicada")
-@app_commands.autocomplete(radio=autocomplete_radio)
-@app_commands.describe(radio="Nombre de la radio.")
-async def radio_play(interaction: Interaction, radio: str):
+@app_commands.autocomplete(name=autocomplete_radio)
+@app_commands.describe(name="Nombre de la radio.")
+async def radio_play(interaction: Interaction, name: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
-    await interaction.response.send_message(f":radio: Sintonizando la radio `{radio}`.")
+    await interaction.response.send_message(f":radio: Sintonizando la radio `{name}`.")
     await on_radio_play(
-        radio_name=radio,
+        radio_name=name,
         author_name=interaction.user.name,
         guild_id=interaction.guild.id,
         database=database,

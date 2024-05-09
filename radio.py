@@ -65,6 +65,21 @@ def get_radio_page(page: int) -> list[str]:
     ]
 
 
+def add_radio(radio_name: str, radio_url: str, database: Database):
+    database.register_radio(radio_name, radio_url)
+    fetch_local_radios(database)
+
+
+def remove_radio(radio_name: str, database: Database):
+    database.remove_radio(radio_name)
+    fetch_local_radios(database)
+
+
+def update_radio(radio_name: str, database: Database):
+    database.remove_radio(radio_name)
+    fetch_local_radios(database)
+
+
 def fetch_local_radios(database: Database) -> list[Radio]:
     __radios.clear()
     __radios.extend(database.get_all_radios())

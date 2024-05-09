@@ -7,6 +7,7 @@ from discord.channel import VocalGuildChannel
 
 from database import Database
 from guild_queue import add_to_queue
+from models.Radio import Radio
 from radio import get_radio_by_name, get_number_of_radios, get_number_of_pages, get_radio_page
 from voice import Sound, SoundType
 
@@ -36,7 +37,7 @@ class RadioView(discord.ui.View):
 
     async def __update_embed__(self, interaction):
         await interaction.response.edit_message(
-            embed=get_formatted_embed(
+            embed=__get_formatted_embed__(
                 radio_pages=get_radio_page(self.__current_page),
                 number_of_radios=get_number_of_radios(),
                 current_page=self.__current_page + 1
@@ -57,11 +58,20 @@ async def on_radio_list(author_name: str, database: Database, on_message: Callab
     database.register_user_interaction(author_name, "radio list")
     current_page = 0
     radio_formated = get_radio_page(current_page)
-    embed_msg = get_formatted_embed(radio_formated, get_number_of_radios(), current_page + 1)
+    embed_msg = __get_formatted_embed__(radio_formated, get_number_of_radios(), current_page + 1)
     await on_message(embed_msg, RadioView(current_page, get_number_of_pages()))
 
 
-def get_formatted_embed(radio_pages: list[str], number_of_radios: int, current_page: int):
+async def on_radio_add(radio_name: str, radio_url: str, author_name: str, database: Database, on_message: Callable[[str], Any]):
+    radio = get_radio_by_name(radio_name, database)
+    if radio is None:
+        database.register_user_interaction(author_name, "radio add")
+
+    else:
+        on_message("La radio ya existe.")
+
+
+def __get_formatted_embed__(radio_pages: list[str], number_of_radios: int, current_page: int):
     blank_space = "\u2800"
     embed_msg = Embed(title="Lista de radios", description=f"Actualmente hay {number_of_radios} radios.", color=0x01B05B)
     max_page = get_number_of_pages()

@@ -386,7 +386,7 @@ async def ask(ctx: Context, *, text: str = ""):
         channel=ctx.channel,
         text=text,
         message=message,
-        openai_client=openai_client,
+        ai_client=ai_client,
         tts_listener=tts_listener
     )
 
@@ -402,7 +402,7 @@ async def ask(interaction: Interaction, *, text: str = ""):
         channel=interaction.channel,
         text=text,
         message=None,
-        openai_client=openai_client,
+        ai_client=ai_client,
         tts_listener=tts_listener
     )
 
@@ -750,6 +750,6 @@ async def event_listener():
 
 if __name__ == "__main__":
     database = Database(get_username_key(), get_password_key(), get_database_key())
-    openai_client = OpenAiClient(get_openai_key())
+    ai_client: AiClient = HuggingChatClient(get_hugging_chat_user_key(), get_hugging_chat_password_key())
     yt_music = YTMusic()
     bot.run(get_bot_key())

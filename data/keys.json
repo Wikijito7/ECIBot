@@ -5,5 +5,7 @@
     "db_enabled": false,
     "db_username": "db_username",
     "db_password": "db_password",
-    "db_database": "db_database"
+    "db_database": "db_database",
+    "hugging_chat_user_key": "hugging_chat_user_key",
+    "hugging_chat_password_key":"hugging_chat_password_key"
 }

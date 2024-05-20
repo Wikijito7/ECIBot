@@ -14,11 +14,11 @@ DEFAULT_THREAD_NAME = "ECIBot - Ask"
 
 
 async def on_ask(author: Member, guild: Guild, database: Database, channel: Union[TextChannel, Thread],
-                 text: str, ai_client: AiClient, message: Optional[Message],
+                 text: str, client: AiClient, message: Optional[Message],
                  tts_listener: Callable[[int, VocalGuildChannel, Messageable, str], Any]):
     database.register_user_interaction(author.name, "ask")
 
-    response = ai_client.generate_response(text)
+    response = client.generate_response(text)
     if response is not None:
         thread = await get_thread_or_create(channel, text, message)
         await thread.send(":e_mail: Respuesta:")

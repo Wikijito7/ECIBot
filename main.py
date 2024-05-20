@@ -386,7 +386,7 @@ async def ask(ctx: Context, *, text: str = ""):
         channel=ctx.channel,
         text=text,
         message=message,
-        ai_client=ai_client,
+        client=ai_client,
         tts_listener=tts_listener
     )
 
@@ -402,7 +402,7 @@ async def ask(interaction: Interaction, *, text: str = ""):
         channel=interaction.channel,
         text=text,
         message=None,
-        ai_client=ai_client,
+        client=ai_client,
         tts_listener=tts_listener
     )
 
@@ -417,7 +417,7 @@ async def ask(interaction: Interaction, message: Message):
         channel=message.channel,
         text=message.content,
         message=None,
-        openai_client=openai_client,
+        client=ai_client,
         tts_listener=tts_listener
     )
 

@@ -4,7 +4,7 @@ from discord import Member, Guild, Message, ChannelType, Thread
 from discord.abc import Messageable
 from discord.channel import VocalGuildChannel, TextChannel
 
-from ai import OpenAiClient
+from ai import AiClient
 from bd import Database
 from commands.say import on_tts
 from voice import audio_play_prechecks
@@ -14,11 +14,11 @@ DEFAULT_THREAD_NAME = "ECIBot - Ask"
 
 
 async def on_ask(author: Member, guild: Guild, database: Database, channel: Union[TextChannel, Thread],
-                 text: str, openai_client: OpenAiClient, message: Optional[Message],
+                 text: str, client: AiClient, message: Optional[Message],
                  tts_listener: Callable[[int, VocalGuildChannel, Messageable, str], Any]):
     database.register_user_interaction(author.name, "ask")
 
-    response = openai_client.generate_response(text)
+    response = client.generate_response(text)
     if response is not None:
         thread = await get_thread_or_create(channel, text, message)
         await thread.send(":e_mail: Respuesta:")

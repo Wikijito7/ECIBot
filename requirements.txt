@@ -8,3 +8,4 @@ openai
 ffmpy
 pymongo
 ytmusicapi
+hugchat

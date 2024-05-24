@@ -42,6 +42,18 @@ def get_openai_key() -> str:
         return claves["openai_key"]
 
 
+def get_hugging_chat_user_key() -> str:
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+        return claves["hugging_chat_user_key"]
+
+
+def get_hugging_chat_password_key() -> str:
+    with open("./data/keys.json") as file:
+        claves = json.loads(file.read())
+        return claves["hugging_chat_password_key"]
+
+
 def is_debug_mode() -> bool:
     with open("./data/keys.json") as file:
         claves = json.loads(file.read())

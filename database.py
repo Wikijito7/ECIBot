@@ -52,22 +52,25 @@ class Database:
         except Exception as e:
             log.error(f"bd >> Error while inserting radio", exc_info=e)
 
-    def register_radio_list(self, radio_list: list[Radio]):
+    def register_radio_list(self, radio_list: list[Radio], auto_fetched: bool = True):
         try:
             if is_database_enabled():
-                radio_dbo = map(lambda radio: {"name": radio.get_radio_name(), "url": radio.get_radio_url()}, radio_list)
+                radio_dbo = map(
+                    lambda radio: {"name": radio.get_radio_name(), "url": radio.get_radio_url(), "auto_fetched": auto_fetched},
+                    radio_list
+                )
                 self.__radio_collection.insert_many(radio_dbo)
         except Exception as e:
             log.error(f"bd >> Error while inserting radio", exc_info=e)
 
-    def remove_radio(self, radio_name):
+    def remove_radio(self, radio_name: str):
         try:
             if is_database_enabled():
                 self.__radio_collection.delete_one({"name": radio_name})
         except Exception as e:
             log.error(f"bd >> Error while removing radio", exc_info=e)
 
-    def get_radio(self, radio_name) -> Optional[Radio]:
+    def get_radio(self, radio_name: str) -> Optional[Radio]:
         try:
             if is_database_enabled():
                 radio_raw = self.__radio_collection.find_one({"name": radio_name})
@@ -86,6 +89,9 @@ class Database:
                 return None
         except Exception as e:
             log.error(f"bd >> Error while fetching radios", exc_info=e)
+
+    def update_radio(self, radio_name: str, radio_url):
+        pass
 
 
 if __name__ == "__main__":

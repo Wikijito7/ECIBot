@@ -7,7 +7,6 @@ from discord.channel import VocalGuildChannel
 
 from database import Database
 from guild_queue import add_to_queue
-from models.Radio import Radio
 from radio import get_radio_by_name, get_number_of_radios, get_number_of_pages, get_radio_page
 from voice import Sound, SoundType
 
@@ -21,14 +20,18 @@ class RadioView(discord.ui.View):
 
     @discord.ui.button(label="Anterior", emoji="⬅️", style=discord.ButtonStyle.gray, disabled=True)
     async def previous_button(self, interaction: Interaction, button: discord.ui.Button):
+        if self.__current_page <= 0:
+            return
         self.__current_page -= 1
         self.next_button.disabled = False
-        if self.__current_page == 0:
+        if self.__current_page <= 0:
             self.previous_button.disabled = True
         await self.__update_embed__(interaction)
 
     @discord.ui.button(label="Siguiente", emoji="➡️", style=discord.ButtonStyle.gray)
     async def next_button(self, interaction: Interaction, button: discord.ui.Button):
+        if self.__current_page >= self.__max_page - 1:
+            return
         self.__current_page += 1
         self.previous_button.disabled = False
         if self.__current_page == self.__max_page - 1:
@@ -47,11 +50,15 @@ class RadioView(discord.ui.View):
 
 
 async def on_radio_play(radio_name: str, author_name: str, guild_id: int, database: Database,
-                        voice_channel: VocalGuildChannel, text_channel: Messageable):
+                        voice_channel: VocalGuildChannel, text_channel: Messageable, on_message: Callable[[str], Any]):
     database.register_user_interaction(author_name, "radio play")
     radio = get_radio_by_name(radio_name, database)
-    sound = Sound(radio.get_radio_name(), SoundType.URL, radio.get_radio_url())
-    await add_to_queue(guild_id, voice_channel, text_channel, sound)
+    if radio is not None:
+        await on_message(f":radio: Sintonizando la radio `{radio_name}`.")
+        sound = Sound(radio.get_radio_name(), SoundType.URL, radio.get_radio_url())
+        await add_to_queue(guild_id, voice_channel, text_channel, sound)
+    else:
+        await on_message(f":confused: No hay ninguna estación de radio llamada `{radio_name}`")
 
 
 async def on_radio_list(author_name: str, database: Database, on_message: Callable[[Embed, RadioView], Any]):

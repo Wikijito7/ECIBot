@@ -695,14 +695,14 @@ async def autocomplete_radio(interaction: discord.Interaction, current: str) -> 
 async def radio_play(interaction: Interaction, name: str):
     if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
         return
-    await interaction.response.send_message(f":radio: Sintonizando la radio `{name}`.")
     await on_radio_play(
         radio_name=name,
         author_name=interaction.user.name,
         guild_id=interaction.guild.id,
         database=database,
         voice_channel=interaction.user.voice.channel,
-        text_channel=interaction.channel
+        text_channel=interaction.channel,
+        on_message=lambda message: interaction.response.send_message(message)
     )
 
 

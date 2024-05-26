@@ -118,5 +118,9 @@ def remove_folder(dir_path: str):
         traceback.print_exc()
 
 
+def flatten(lists: list[list]) -> list:
+    return [element for sublist in lists for element in sublist]
+
+
 if __name__ == "__main__":
     pass

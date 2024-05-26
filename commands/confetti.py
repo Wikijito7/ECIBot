@@ -4,7 +4,7 @@ from typing import Callable, Any
 from discord.abc import Messageable
 from discord.channel import VocalGuildChannel
 
-from bd import Database
+from database import Database
 from commands.play import on_play
 from youtube import extract_yt_dlp_info
 

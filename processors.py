@@ -54,16 +54,43 @@ async def process_link(message: Message, author_id: int):
     if "https://www.instagram.com" in message.content.lower():
         await send_fixed_up_instagram(message, "https://www.instagram")
 
+    if "https://www.reddit.com" in message.content.lower():
+        await send_fixed_up_reddit(message, "https://www.reddit")
+
+    if "https://reddit.com" in message.content.lower():
+        await send_fixed_up_reddit(message, "https://reddit")
+
+    if "https://www.tiktok.com" in message.content.lower():
+        await send_fixed_up_tiktok(message, "https://www.tiktok")
+
+    if "https://tiktok.com" in message.content.lower():
+        await send_fixed_up_tiktok(message, "https://tiktok")
+
+    if "https://vm.tiktok.com" in message.content.lower():
+        await send_fixed_up_tiktok(message, "https://vm.tiktok")
+
 
 async def send_fixed_up_twitter(message: Message, content: str):
     fixed_tweet = message.content.replace(content, "https://fixupx").split("?")[0]
-    await message.channel.send(f"Tweet enviado por {message.author.mention} con el enlace arreglado:\n{fixed_tweet}")
-    await message.delete()
+    await __send_fixed_up_message__(fixed_tweet, message)
 
 
 async def send_fixed_up_instagram(message: Message, content: str):
     fixed_insta = message.content.replace(content, "https://ddinstagram").split("?")[0]
-    await message.channel.send(
-        f"Publicación enviada por {message.author.mention} con el enlace arreglado:\n{fixed_insta}")
+    await __send_fixed_up_message__(fixed_insta, message)
+
+
+async def send_fixed_up_reddit(message: Message, content: str):
+    fixed_post = message.content.replace(content, "https://rxddit").split("?")[0]
+    await __send_fixed_up_message__(fixed_post, message)
+
+
+async def send_fixed_up_tiktok(message: Message, content: str):
+    fixed_post = message.content.replace(content, "https://tiktxk").split("?")[0]
+    await __send_fixed_up_message__(fixed_post, message)
+
+
+async def __send_fixed_up_message__(fixed_post: str, message: Message):
+    await message.channel.send(f"Post enviado por {message.author.mention} con el enlace arreglado:\n{fixed_post}")
     await message.delete()
 

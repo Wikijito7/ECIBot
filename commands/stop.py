@@ -2,7 +2,7 @@ from typing import Callable, Any
 
 from discord import Guild, VoiceClient
 
-from bd import Database
+from database import Database
 
 
 async def on_stop(guild: Guild, author_name: str, database: Database, on_message: Callable[[str], Any]):

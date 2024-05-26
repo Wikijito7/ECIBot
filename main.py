@@ -2,16 +2,19 @@ import asyncio
 import random
 from datetime import datetime, time
 from threading import Event
+from typing import List
 
 import discord
-from discord import Interaction, app_commands
-from discord.app_commands import Group
+from discord import Interaction, app_commands, Message
+from discord.app_commands import Group, Choice
 from discord.channel import VocalGuildChannel
 from discord.ext import commands
 from discord.ext import tasks
+from discord.ext.commands import Context
 
 from ai import *
-from bd import Database
+from commands.radio_command import on_radio_play, on_radio_list
+from database import Database
 from commands.ask import on_ask
 from commands.confetti import on_confetti
 from commands.dalle_command import on_dalle
@@ -29,6 +32,7 @@ from commands.youtube_search import on_search_in_youtube, on_search_in_youtube_m
 from dalle import ResponseType, clear_dalle, remove_image_from_memory, DalleImages
 from guild_queue import add_to_queue
 from processors import process_link, process_reactions
+from radio import get_radios, fetch_api_radios
 from utils import *
 from voice import *
 from youtube import *
@@ -45,10 +49,22 @@ kiwi_chance = 500
 dalle_event = Event()
 search_group = Group(name="search", description="Busca el argumento en el lugar indicado.")
 mix_group = Group(name="mix", description="Reproduce un mix generado a partir de la búsqueda o url introducida.")
+radio_group = Group(name="radio", description="Comando principal de la funcionalidad radio.")
 
 
 @bot.event
 async def on_ready():
+    await set_up_presence()
+    await sync_tree_command()
+    log.info(f"{bot.user} is alive!")
+    sdos = bot.get_guild(689108711452442667)
+    if sdos is not None:
+        await sdos.me.edit(nick="Fran López")
+    radio_fetch.start()
+    event_listener.start()
+
+
+async def set_up_presence():
     if is_debug_mode():
         log.getLogger().setLevel(log.DEBUG)
         log.debug(">> Debug mode is ON")
@@ -58,14 +74,13 @@ async def on_ready():
         log.getLogger().setLevel(log.INFO)
         await bot.change_presence(activity=discord.Game("~bip-bop"))
         kiwi.start()
+
+
+async def sync_tree_command():
     bot.tree.add_command(search_group)
     bot.tree.add_command(mix_group)
+    bot.tree.add_command(radio_group)
     await bot.tree.sync()
-    log.info(f"{bot.user} is alive!")
-    sdos = bot.get_guild(689108711452442667)
-    if sdos is not None:
-        await sdos.me.edit(nick="Fran López")
-    event_listener.start()
 
 
 @bot.event
@@ -667,6 +682,39 @@ async def soundcloudmix(interaction: Interaction, *, term: str):
     )
 
 
+async def autocomplete_radio(interaction: discord.Interaction, current: str) -> List[Choice[str]]:
+    radios = list(map(lambda radio: radio.get_radio_name(), get_radios(database)))
+    filtered_radios = filter(lambda radio_name: current.lower() in radio_name.lower(), radios) if current != "" else radios
+    mapped_radios = list(map(lambda radio: Choice(name=radio, value=radio), filtered_radios))[:25]
+    return mapped_radios
+
+
+@radio_group.command(name="play", description="Reproduce la radio indicada")
+@app_commands.autocomplete(name=autocomplete_radio)
+@app_commands.describe(name="Nombre de la radio.")
+async def radio_play(interaction: Interaction, name: str):
+    if not await audio_play_prechecks(interaction.guild, interaction.user, lambda error: interaction.response.send_message(error)):
+        return
+    await on_radio_play(
+        radio_name=name,
+        author_name=interaction.user.name,
+        guild_id=interaction.guild.id,
+        database=database,
+        voice_channel=interaction.user.voice.channel,
+        text_channel=interaction.channel,
+        on_message=lambda message: interaction.response.send_message(message)
+    )
+
+
+@radio_group.command(name="list", description="Lista las radios disponibles")
+async def radio_list(interaction: Interaction):
+    await on_radio_list(
+        author_name=interaction.user.name,
+        database=database,
+        on_message=lambda embed, view: interaction.response.send_message(embed=embed, view=view)
+    )
+
+
 def dalle_listener(result: DalleImages):
     dalle_results_queue.append(result)
     dalle_event.set()
@@ -746,6 +794,13 @@ async def event_listener():
         dalle_event.clear()
         if not dalle_vitals.is_running():
             dalle_vitals.start()
+
+
+@tasks.loop(hours=24)
+async def radio_fetch():
+    log.info("Updating Radios info from APIs")
+    await fetch_api_radios(database)
+    log.info("Updated Radios info from APIs")
 
 
 if __name__ == "__main__":

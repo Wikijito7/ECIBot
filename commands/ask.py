@@ -5,7 +5,7 @@ from discord.abc import Messageable
 from discord.channel import VocalGuildChannel, TextChannel
 
 from ai import AiClient
-from bd import Database
+from database import Database
 from commands.say import on_tts
 from voice import audio_play_prechecks
 

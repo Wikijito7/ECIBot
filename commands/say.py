@@ -4,7 +4,7 @@ from discord import Member, Guild
 from discord.abc import Messageable
 from discord.channel import VocalGuildChannel
 
-from bd import Database
+from database import Database
 from threads import launch
 from tts import generate_tts
 

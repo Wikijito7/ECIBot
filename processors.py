@@ -86,7 +86,7 @@ async def send_fixed_up_reddit(message: Message, content: str):
 
 
 async def send_fixed_up_tiktok(message: Message, content: str):
-    fixed_post = message.content.replace(content, "https://tiktxk").split("?")[0]
+    fixed_post = message.content.replace(content, "https://tnktok").split("?")[0]
     await __send_fixed_up_message__(fixed_post, message)
 
 

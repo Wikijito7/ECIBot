@@ -9,3 +9,4 @@ ffmpy
 pymongo
 ytmusicapi
 hugchat
+beautifulsoup4

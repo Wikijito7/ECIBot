@@ -89,7 +89,7 @@ async def generate_sounds(channel: Messageable, *args: str) -> AsyncIterable[Sou
         elif "https://suno.com" in arg.lower():
             song_id = arg.lower().split("/")[-1]
             name = "Suno Song"
-            cdn_url = f"https://cdn1.suno.ai/{song_id}.mp3"
+            cdn_url = f"https://audiopipe.suno.ai/?item_id={song_id}"
             yield Sound(name, SoundType.URL, cdn_url)
 
         elif arg.startswith("http://") or arg.startswith("https://"):

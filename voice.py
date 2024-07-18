@@ -5,6 +5,8 @@ from collections.abc import AsyncIterable
 from enum import Enum
 from typing import Optional, Any, Callable
 
+import requests
+from bs4 import BeautifulSoup
 from discord import FFmpegPCMAudio, VoiceClient, Member, Guild
 from discord.abc import Messageable
 
@@ -87,10 +89,11 @@ async def generate_sounds(channel: Messageable, *args: str) -> AsyncIterable[Sou
             yield Sound(name, SoundType.URL, url)
 
         elif "https://suno.com" in arg.lower():
-            song_id = arg.lower().split("/")[-1]
-            name = "Suno Song"
-            cdn_url = f"https://audiopipe.suno.ai/?item_id={song_id}"
-            yield Sound(name, SoundType.URL, cdn_url)
+            title, url = get_title_and_audio_from_suno(arg.lower())
+            if title is not None and url is not None:
+                yield Sound(title, SoundType.URL, url)
+            else:
+                await channel.send(f"Ha ocurrido un error al scrappear suno con la url `{arg}`")
 
         elif arg.startswith("http://") or arg.startswith("https://"):
             async for sound in generate_sounds_from_url(channel, arg, None):
@@ -141,5 +144,13 @@ async def generate_sounds_from_yt_dlp_info(channel: Messageable, yt_dlp_info: An
             yield sound
 
 
+def get_title_and_audio_from_suno(url: str) -> tuple[Optional[str]]:
+    web = requests.get(url)
+    scrapped = BeautifulSoup(web.content, 'html.parser')
+    title = scrapped.find('meta', property="og:title").get("content")
+    audio = scrapped.find('meta', property="og:audio").get("content")
+    return (title, audio)
+
+
 if __name__ == "__main__":
-    pass
+    generate_sounds("https://suno.com/song/849fa968-b5be-4920-997d-f5e056b1bb5b")

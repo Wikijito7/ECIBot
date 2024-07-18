@@ -153,4 +153,4 @@ def get_title_and_audio_from_suno(url: str) -> tuple[Optional[str]]:
 
 
 if __name__ == "__main__":
-    generate_sounds("https://suno.com/song/849fa968-b5be-4920-997d-f5e056b1bb5b")
+    pass

@@ -16,6 +16,8 @@ def extract_yt_dlp_info(url: str, retrieve_full_playlist: bool = False) -> Any:
             'format': YT_DLP_FORMATS,
             'extract_flat': True,  # Don't try to obtain information from nested content (very slow in long playlists)
             'playlistend': None if retrieve_full_playlist else MAX_PLAYLIST_ITEMS + 1,  # Limit max playlists items by default to avoid excessive pagination and add one more to be able to check if list was too long and send message
+            'username': "oauth2",
+            'password': "''"
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(url, download=False)
@@ -31,6 +33,8 @@ def yt_search_and_extract_yt_dlp_info(search_query: str) -> Any:
             'format': YT_DLP_FORMATS,
             'extract_flat': True,  # Don't try to obtain information from nested content (very slow in long playlists)
             'noplaylist': True,  # Ensure playlists are discarded
+            'username': "oauth2",
+            'password': "''"
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(f"ytsearch:{search_query}", download=False).get('entries')[0]
@@ -47,6 +51,8 @@ def yt_music_search_and_extract_yt_dlp_info(search_query: str) -> Any:
             'extract_flat': True,  # Don't try to obtain information from nested content (very slow in long playlists)
             'noplaylist': True,  # We only want one video when searching
             'playlist_items': '1',  # Only get first item in lists
+            'username': "oauth2",
+            'password': "''"
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(f"https://music.youtube.com/search?q={search_query}", download=False).get('entries')[0]

@@ -12,7 +12,7 @@ from utils import flatten
 TDT_CHANNELS_URL = "https://www.tdtchannels.com/lists/radio.json"
 RUSSIAN_RADIO_RECORD_RADIOS_URL = "https://www.radiorecord.ru/api/stations/"
 DFM_RADIO_URL = "https://dfm.ru/api/channel_list"
-ENERGY_RADIO_URL = "https://api.nrjnet.de/webradio/energy/config.json"
+ENERGY_RADIO_URL = "https://api.nrjnet.de/webradio/nrj-energy-de/config.json"
 SPANISH_RADIOS_NAME_FILTER = ["Populares", "Musicales", "Deportivas", "Infantiles", "Internacional"]
 MAX_RADIOS_PER_FIELD = 35
 MAX_FIELD_CHARACTERS = 1000
